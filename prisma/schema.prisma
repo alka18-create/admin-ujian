@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ========================
+// AUTH
+// ========================
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN") // ADMIN | SUPERADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========================
+// MASTER DATA
+// ========================
+model Teacher {
+  id         String       @id @default(cuid())
+  nip        String?      @unique
+  code       String?      @unique
+  name       String
+  gender     String       // MALE | FEMALE
+  subject    String?
+  phone      String?
+  email      String?      @unique
+  address    String?
+  availableDays String?   // null=all days, or "1,4" (1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat)
+  maxSessions   Int?      // null=no limit on supervision count
+  isActive      Boolean   @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relations
+  invigilators Invigilator[]
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  nis       String   @unique
+  nisn      String?  @unique
+  name      String
+  gender    String   // MALE | FEMALE
+  className String   // e.g. "XII IPA 1"
+  major     String?  // MIPA | IPS | KEAGAMAAN
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  seatPlans SeatPlan[]
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  code        String   @unique  // e.g. "R01"
+  name        String            // e.g. "Ruang 01"
+  capacity    Int
+  floor       Int      @default(1)
+  building    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  roomAssignments RoomAssignment[]
+  seatPlans       SeatPlan[]
+  invigilators    Invigilator[]
+}
+
+// ========================
+// EXAM CONFIG
+// ========================
+model ExamConfig {
+  id          String   @id @default(cuid())
+  name        String   // e.g. "Ujian Nasional 2025"
+  academicYear String  // e.g. "2024/2025"
+  semester    String   // GANJIL | GENAP
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  schedules       ExamSchedule[]
+  roomAssignments RoomAssignment[]
+  seatPlans       SeatPlan[]
+}
+
+// ========================
+// EXAM SCHEDULE
+// ========================
+model ExamSchedule {
+  id          String   @id @default(cuid())
+  examConfigId String
+  date        DateTime
+  session     Int      // 1 | 2
+  startTime   String   // "08:00"
+  endTime     String   // "10:00"
+  subject     String
+  className   String?  // target class, null = all
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  examConfig   ExamConfig    @relation(fields: [examConfigId], references: [id], onDelete: Cascade)
+  invigilators Invigilator[]
+}
+
+// ========================
+// ROOM ASSIGNMENT
+// ========================
+model RoomAssignment {
+  id           String   @id @default(cuid())
+  examConfigId String
+  roomId       String
+  studentCount Int      @default(0)
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  examConfig ExamConfig @relation(fields: [examConfigId], references: [id], onDelete: Cascade)
+  room       Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+// ========================
+// SEAT PLAN
+// ========================
+model SeatPlan {
+  id           String   @id @default(cuid())
+  examConfigId String
+  roomId       String
+  studentId    String
+  seatRow      Int
+  seatCol      Int
+  seatLabel    String   // e.g. "A1"
+  createdAt    DateTime @default(now())
+
+  // Relations
+  examConfig ExamConfig @relation(fields: [examConfigId], references: [id], onDelete: Cascade)
+  room       Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examConfigId, roomId, seatRow, seatCol])
+  @@unique([examConfigId, roomId, studentId])
+}
+
+// ========================
+// INVIGILATOR (Pengawas)
+// ========================
+model Invigilator {
+  id             String   @id @default(cuid())
+  examScheduleId String
+  teacherId      String
+  roomId         String
+  session        Int      // 1 | 2
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  examSchedule ExamSchedule @relation(fields: [examScheduleId], references: [id], onDelete: Cascade)
+  teacher      Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  room         Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([examScheduleId, roomId])
+}
+
+// ========================
+// CONFIGURATION
+// ========================
+model SchoolIdentity {
+  id             String   @id @default(cuid())
+  name           String
+  npsn           String?
+  nsm            String?
+  address        String?
+  headmasterName String?
+  headmasterNip  String?
+  logo           String?  // Base64 string
+  signature      String?  // Base64 string
+  stamp          String?  // Base64 string
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

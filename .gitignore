@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
+
+# local database (contains credentials & student data)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# uploaded student photos (personal data)
+/public/uploads/
