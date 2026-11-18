@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Loader2, FileText, Eye, X, Download, ScrollText } from "lucide-react";
-import { formatDate, formatDay, formatDateShort } from "@/utils/dateFormatter";
+import { formatDate, formatMonthYear } from "@/utils/dateFormatter";
 
 type ExamConfig = { id: string; name: string; academicYear: string; semester: string; isActive: boolean };
 type ExamSchedule = { id: string; date: string; session: number; subject: string; startTime: string; endTime: string };
@@ -34,6 +34,7 @@ export default function ExportBeritaAcaraPage() {
     const [selectedConfig, setSelectedConfig] = useState("");
     const [activeConfig, setActiveConfig] = useState<ExamConfig | null>(null);
     const [items, setItems] = useState<BeritaAcaraItem[]>([]);
+    const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState<"pdf" | "preview" | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -69,12 +70,17 @@ export default function ExportBeritaAcaraPage() {
         if (!selectedConfig) return;
         setLoading(true);
         try {
-            const [invRes, seatRes] = await Promise.all([
+            const [invRes, seatRes, schRes] = await Promise.all([
                 fetch(`/api/generate/invigilators?examConfigId=${selectedConfig}`),
                 fetch(`/api/generate/seats?examConfigId=${selectedConfig}`),
+                fetch(`/api/schedule?type=schedules&examConfigId=${selectedConfig}`).catch(() => null),
             ]);
             const invJson = await invRes.json();
             const seatJson = await seatRes.json();
+            if (schRes) {
+                const schJson = await schRes.json().catch(() => null);
+                if (schJson?.success) setSchedules(schJson.data as ExamSchedule[]);
+            }
             if (invJson.success && seatJson.success) {
                 const plans = seatJson.data as RoomPlan[];
                 const countMap = new Map<string, number>();
@@ -116,12 +122,38 @@ export default function ExportBeritaAcaraPage() {
     }, {});
     const totalDays = Object.keys(grouped).length;
 
+    // 1 lembar berita acara = 1 ruang pada 1 tanggal (memuat Jam Pertama/Kedua/Ketiga)
+    const sheets = (() => {
+        const map = new Map<string, { date: string; room: InvigilatorRow["room"] }>();
+        for (const item of filteredItems) {
+            const key = `${item.examSchedule.date.slice(0, 10)}|${item.room.id}`;
+            if (!map.has(key)) map.set(key, { date: item.examSchedule.date, room: item.room });
+        }
+        return [...map.values()].sort(
+            (a, b) =>
+                new Date(a.date).getTime() - new Date(b.date).getTime() ||
+                a.room.code.localeCompare(b.room.code)
+        );
+    })();
+
+    // Jumlah lembar per tanggal (1 lembar = 1 ruang)
+    const roomCountByDate = new Map<string, number>();
+    {
+        const sets = new Map<string, Set<string>>();
+        for (const item of items) {
+            const d = item.examSchedule.date.slice(0, 10);
+            if (!sets.has(d)) sets.set(d, new Set());
+            sets.get(d)!.add(item.room.id);
+        }
+        for (const [d, set] of sets) roomCountByDate.set(d, set.size);
+    }
+    const totalSheets = [...roomCountByDate.values()].reduce((a, b) => a + b, 0);
+
     const handleExportPDF = async (action: "download" | "preview" = "download") => {
-        if (filteredItems.length === 0) return;
+        if (sheets.length === 0) return;
         setExporting(action === "download" ? "pdf" : "preview");
-        setProgress({ done: 0, total: filteredItems.length });
+        setProgress({ done: 0, total: sheets.length });
         try {
-            // Pakai cache; fallback fetch hanya jika cache belum siap
             let school: SchoolIdentity | null = schoolCache;
             if (!school) {
                 try {
@@ -137,212 +169,218 @@ export default function ExportBeritaAcaraPage() {
             }
 
             const schoolName = school?.name || "MADRASAH";
-            const schoolAddress = school?.address || "";
-            const headmasterName = school?.headmasterName || "( ............................................. )";
-            const headmasterNip = school?.headmasterNip || "";
-            const schoolLogo = school?.logo || null;
             const academicYear = activeConfig?.academicYear || "";
-            const examName = activeConfig?.name || "UJIAN";
+            const examName = (activeConfig?.name || "UJIAN")
+                .replace(/\s*\([^)]*\)\s*/g, " ")
+                .trim()
+                .toUpperCase();
 
-            const { default: jsPDF } = jspdfModule ?? await import("jspdf");
+            const { default: jsPDF } = jspdfModule ?? (await import("jspdf"));
             const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
             const pageW = doc.internal.pageSize.getWidth();
-            const pageH = doc.internal.pageSize.getHeight();
-            const margin = 15;
 
-            const renderKop = () => {
-                let y = 14;
-                if (schoolLogo) {
-                    try {
-                        const imgProps = doc.getImageProperties(schoolLogo);
-                        const logoW = 20;
-                        const logoH = (imgProps.height * logoW) / imgProps.width;
-                        doc.addImage(schoolLogo, imgProps.fileType, margin, 10, logoW, logoH);
-                    } catch (e) {
-                        console.error("Failed to draw logo", e);
-                    }
-                }
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(13);
-                doc.text(schoolName.toUpperCase(), pageW / 2, y, { align: "center" });
-                y += 5;
-                if (schoolAddress) {
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(9);
-                    const addrLines = doc.splitTextToSize(schoolAddress, pageW - margin * 2 - 44);
-                    doc.text(addrLines, pageW / 2, y, { align: "center" });
-                    y += addrLines.length * 4;
-                }
-                y += 2;
-                doc.setLineWidth(0.8);
-                doc.line(margin, y, pageW - margin, y);
-                doc.setLineWidth(0.3);
-                doc.line(margin, y + 1.2, pageW - margin, y + 1.2);
-                return y + 7;
+            // Geometri mengikuti contoh "Berita Acara.pdf" (A4, satuan mm)
+            const L = 22.3;      // tepi kiri teks paragraf
+            const IND = 28.7;    // indentasi lanjutan butir a/b
+            const LBL = 31.9;    // awal label isian
+            const COL = 89;      // posisi titik dua
+            const VAL = 92.3;    // awal isian
+            const RIGHT = 188.5; // tepi kanan
+            const BODY = 12;
+
+            const setBody = (bold = false) => {
+                doc.setFont("times", bold ? "bold" : "normal");
+                doc.setFontSize(BODY);
             };
 
-            let firstPage = true;
+            /** Deretan titik sebagai garis isian */
+            const dots = (fromX: number, toX: number, y: number) => {
+                setBody();
+                const unit = doc.getTextWidth(".");
+                if (unit <= 0 || toX <= fromX) return;
+                doc.text(".".repeat(Math.max(1, Math.ceil((toX - fromX) / unit))), fromX, y);
+            };
+
+            const rowLabel = (label: string, y: number) => {
+                setBody();
+                doc.text(label, LBL, y);
+                const colonX = Math.max(COL, LBL + doc.getTextWidth(label) + 1.2);
+                doc.text(":", colonX, y);
+                return colonX;
+            };
+
+            const rowDots = (label: string, y: number, endX = RIGHT) => {
+                const colonX = rowLabel(label, y);
+                dots(Math.max(VAL, colonX + 2), endX, y);
+            };
+
+            /** Baris "……..orang" (isian jumlah peserta) */
+            const rowOrang = (label: string, y: number) => {
+                const colonX = rowLabel(label, y);
+                setBody();
+                const word = "orang";
+                const wordX = 136.9 - doc.getTextWidth(word);
+                dots(Math.max(VAL, colonX + 2), wordX - 0.15, y);
+                doc.text(word, wordX, y);
+            };
+
+            /** Baris ":" + titik-titik tanpa label (lanjutan nomor peserta) */
+            const extraLine = (y: number) => {
+                setBody();
+                doc.text(":", COL, y);
+                dots(VAL, RIGHT, y);
+            };
+
+            const centerBold = (text: string, y: number, size: number) => {
+                doc.setFont("times", "bold");
+                let s = size;
+                doc.setFontSize(s);
+                while (s > 9 && doc.getTextWidth(text) > pageW - 34) {
+                    s -= 0.5;
+                    doc.setFontSize(s);
+                }
+                doc.text(text, pageW / 2, y, { align: "center" });
+            };
+
+            // Tabel tanda tangan pengawas
+            const tableX = [27.8, 50.0, 103.1, 151.4, 188.5];
+            const tableY = [231.0, 241.5, 250.5, 259.5, 268.4];
+
             let idx = 0;
-            for (const item of filteredItems) {
-                if (!firstPage) doc.addPage();
-                firstPage = false;
+            for (const sheet of sheets) {
+                if (idx > 0) doc.addPage();
                 idx += 1;
-                // Yield ke event loop tiap 10 halaman agar UI/progress tidak macet
-                if (idx % 5 === 0 || idx === filteredItems.length) {
-                    setProgress({ done: idx, total: filteredItems.length });
+                if (idx % 5 === 0 || idx === sheets.length) {
+                    setProgress({ done: idx, total: sheets.length });
                 }
                 if (idx % 10 === 0) {
                     await new Promise((r) => setTimeout(r, 0));
                 }
 
-                let y = renderKop();
+                const dateKey = sheet.date.slice(0, 10);
+                const daySchedules = schedules.filter((s) => s.date.slice(0, 10) === dateKey);
+                const timeSource = daySchedules.length
+                    ? daySchedules
+                    : filteredItems
+                          .filter((i) => i.examSchedule.date.slice(0, 10) === dateKey)
+                          .map((i) => i.examSchedule);
+                const startTime = timeSource.length
+                    ? timeSource.reduce((min, s) => (s.startTime < min ? s.startTime : min), timeSource[0].startTime)
+                    : "";
+                const endTime = timeSource.length
+                    ? timeSource.reduce((max, s) => (s.endTime > max ? s.endTime : max), timeSource[0].endTime)
+                    : "";
+                const [month, year] = formatMonthYear(sheet.date).split(" ");
 
-                // Title
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(12);
-                doc.text("BERITA ACARA PELAKSANAAN UJIAN", pageW / 2, y, { align: "center" });
-                y += 5;
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "normal");
-                doc.text(`${examName} — Tahun Ajaran ${academicYear}`, pageW / 2, y, { align: "center" });
-                y += 8;
+                // ---------- Judul ----------
+                centerBold("BERITA ACARA PENYELENGGARAAN", 22.1, 14);
+                centerBold(examName, 28.6, 14);
+                centerBold(schoolName.toUpperCase(), 35.0, 14);
+                centerBold(`TAHUN AJARAN ${academicYear}`, 41.5, 14);
 
-                // Identity table
-                doc.setFontSize(10);
-                const labelX = margin;
-                const colonX = margin + 38;
-                const valueX = margin + 42;
-                const rowH = 6;
-                const sched = item.examSchedule;
-                const dayName = formatDay(sched.date);
-                const dateLong = formatDate(sched.date);
-                const teacherLabel = item.teacher.nip
-                    ? `${item.teacher.name} (NIP: ${item.teacher.nip})`
-                    : item.teacher.name;
-
-                const rows: [string, string][] = [
-                    ["Hari / Tanggal", `${dayName} / ${dateLong}`],
-                    ["Sesi", `Sesi ${sched.session} (${sched.startTime} – ${sched.endTime})`],
-                    ["Mata Pelajaran", sched.subject],
-                    ["Ruang", `${item.room.code} — ${item.room.name}`],
-                    ["Pengawas", teacherLabel],
-                    ["Jumlah Peserta", `${item.participantCount} orang`],
-                ];
-                for (const [label, value] of rows) {
-                    doc.setFont("helvetica", "normal");
-                    doc.text(label, labelX, y);
-                    doc.text(":", colonX, y);
-                    doc.setFont("helvetica", label === "Mata Pelajaran" ? "bold" : "normal");
-                    const wrapped = doc.splitTextToSize(value, pageW - valueX - margin);
-                    doc.text(wrapped, valueX, y);
-                    y += Math.max(1, wrapped.length) * rowH - (wrapped.length > 1 ? 2 : 0);
-                }
-                y += 3;
-
-                // Statement
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(10);
-                const statement = `Pada hari ini, ${dayName.toLowerCase()} tanggal ${formatDateShort(sched.date)}, telah diselenggarakan ujian mata pelajaran ${sched.subject} sesi ${sched.session} di ruang ${item.room.name} dari pukul ${sched.startTime} sampai pukul ${sched.endTime} dengan ketentuan sebagai berikut:`;
-                const stLines = doc.splitTextToSize(statement, pageW - margin * 2);
-                doc.text(stLines, margin, y);
-                y += stLines.length * 5 + 2;
-
-                // Counts (manual fill)
-                doc.setFontSize(10);
-                const countRows: [string, string][] = [
-                    ["1.", `Jumlah peserta seharusnya : ${item.participantCount} orang`],
-                    ["2.", "Jumlah peserta hadir      : ............ orang"],
-                    ["3.", "Jumlah peserta tidak hadir : ............ orang"],
-                ];
-                for (const [no, text] of countRows) {
-                    doc.text(no, margin + 2, y);
-                    doc.text(text, margin + 10, y);
-                    y += 6;
-                }
-
-                // Absent numbers
-                doc.text("4.  Nomor peserta yang tidak hadir:", margin + 2, y);
-                y += 6;
-                for (let i = 0; i < 2; i++) {
-                    doc.setDrawColor(150);
-                    doc.line(margin + 10, y, pageW - margin, y);
-                    y += 7;
-                }
-                doc.setDrawColor(0);
-
-                // Notes box
-                doc.text("5.  Catatan / kejadian khusus:", margin + 2, y);
-                y += 5;
-                const boxH = 28;
-                const boxTop = y;
-                // clamp so signatures still fit
-                const minSigSpace = 55;
-                let noteH = boxH;
-                if (boxTop + noteH > pageH - minSigSpace) {
-                    noteH = pageH - minSigSpace - boxTop;
-                }
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.4);
-                doc.rect(margin + 2, boxTop, pageW - margin * 2 - 2, Math.max(noteH, 18));
-                // dotted guide lines inside box
-                doc.setDrawColor(200);
-                doc.setLineWidth(0.2);
-                for (let ly = boxTop + 7; ly < boxTop + Math.max(noteH, 18) - 2; ly += 7) {
-                    doc.line(margin + 5, ly, pageW - margin - 3, ly);
-                }
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.3);
-                y = boxTop + Math.max(noteH, 18) + 6;
-
-                doc.setFont("helvetica", "normal");
-                doc.text("Demikian berita acara ini dibuat dengan sebenarnya.", margin, y);
-                y += 8;
-
-                // Signatures
-                if (y > pageH - 50) {
-                    doc.addPage();
-                    y = renderKop();
-                    doc.setFontSize(10);
-                    doc.text(`(Lanjutan berita acara — ${item.room.name}, Sesi ${sched.session})`, margin, y);
-                    y += 8;
-                }
-                const leftX = margin + 30;
-                const rightX = pageW - margin - 30;
-                doc.setFontSize(10);
-                doc.text("Pengawas,", leftX, y, { align: "center" });
-                doc.text("Ketua Panitia,", rightX, y, { align: "center" });
-                y += 20;
-                doc.setFont("helvetica", "bold");
-                doc.text(item.teacher.name, leftX, y, { align: "center" });
-                doc.text(headmasterName, rightX, y, { align: "center" });
-                y += 5;
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(9);
-                if (item.teacher.nip) doc.text(`NIP. ${item.teacher.nip}`, leftX, y, { align: "center" });
-                if (headmasterNip) doc.text(`NIP. ${headmasterNip}`, rightX, y, { align: "center" });
-            }
-
-            // Page numbers
-            const totalPages = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
-            for (let p = 1; p <= totalPages; p++) {
-                doc.setPage(p);
-                doc.setFontSize(7);
-                doc.setTextColor(150, 150, 150);
+                // ---------- Pembuka ----------
+                setBody();
                 doc.text(
-                    `Dicetak: ${new Date().toLocaleDateString("id-ID")} | Halaman ${p}/${totalPages}`,
-                    pageW / 2,
-                    pageH - 8,
-                    { align: "center" }
+                    `Pada hari ini ..................... tanggal ......................... bulan ${month || ""} Tahun ${year || ""}`,
+                    L,
+                    52.5
                 );
-                doc.setTextColor(0, 0, 0);
+
+                const startDot = startTime ? startTime.replace(":", ".") : "…..";
+                const endDot = endTime ? endTime.replace(":", ".") : "…..";
+                const maxW = RIGHT - IND;
+                const intro1 = `Telah diselenggarakan ${examName} Tahun Pelajaran ${academicYear} dari pukul ${startDot}`;
+                doc.text("a.", L, 61.5);
+                if (doc.getTextWidth(intro1) <= maxW) {
+                    doc.text(intro1, IND, 61.5);
+                    doc.text(`sampai dengan pukul ${endDot}`, IND, 66.8);
+                } else {
+                    const introLines = doc.splitTextToSize(`${intro1} sampai dengan pukul ${endDot}`, maxW);
+                    introLines.forEach((line: string, i: number) => {
+                        doc.text(line, IND, 61.5 + i * 5.3);
+                    });
+                }
+
+                // ---------- Butir a ----------
+                rowLabel("Pada Madrasah", 74.7);
+                doc.text(schoolName, VAL, 74.7);
+                rowLabel("Ruang", 80.8);
+                doc.text(sheet.room.name, VAL, 80.8);
+
+                rowDots("Mata Pelajaran Ujian Jam Pertama", 87.0, 169.6);
+                rowOrang("Jumlah Peserta Seharusnya", 93.1);
+                rowOrang("Jumlah Peserta yang Hadir", 99.3);
+                rowOrang("Jumlah Peserta yang tidak Hadir", 105.4);
+                extraLine(110.8);
+                extraLine(116.1);
+
+                rowDots("Mata Pelajaran Ujian Jam Kedua", 123.7, 169.6);
+                rowOrang("Jumlah Peserta Seharusnya", 129.1);
+                rowOrang("Jumlah Peserta yang Hadir", 134.5);
+                rowOrang("Jumlah Peserta yang tidak Hadir", 139.8);
+                extraLine(144.7);
+                extraLine(149.6);
+
+                rowDots("Mata Pelajaran Ujian Jam Ketiga", 154.9, 169.6);
+                rowOrang("Jumlah Peserta Seharusnya", 160.2);
+                rowOrang("Jumlah Peserta yang Hadir", 165.6);
+                rowOrang("Jumlah Peserta yang tidak Hadir", 172.2);
+                extraLine(178.8);
+                extraLine(183.7);
+
+                // ---------- Butir b ----------
+                setBody();
+                doc.text("b.", L, 189.2);
+                doc.text(
+                    doc.splitTextToSize(
+                        `Catatan selama pelaksanaan ${examName} Tahun Pelajaran ${academicYear})`,
+                        RIGHT - IND
+                    ),
+                    IND,
+                    189.2
+                );
+
+                const notes = ["Ujian Jam Pertama", "Ujian Jam Kedua", "Ujian Jam Ketiga"];
+                [201.6, 208.5, 215.4].forEach((y, i) => {
+                    setBody();
+                    doc.text(notes[i], LBL, y);
+                    doc.text(":", 69.1, y);
+                    dots(71.3, 190.5, y);
+                });
+
+                // ---------- Penutup ----------
+                setBody();
+                doc.text("Berita acara ini dibuat dengan sesungguhnya.", L, 222.8);
+                doc.text("Pengawas yang membuat berita acara,", (tableX[0] + tableX[4]) / 2, 228.5, {
+                    align: "center",
+                });
+
+                // ---------- Tabel tanda tangan ----------
+                doc.setDrawColor(0);
+                doc.setLineWidth(0.25);
+                for (const y of tableY) doc.line(tableX[0], y, tableX[4], y);
+                for (const x of tableX) doc.line(x, tableY[0], x, tableY[tableY.length - 1]);
+
+                setBody(true);
+                doc.text("UJIAN", (tableX[0] + tableX[1]) / 2, 234.4, { align: "center" });
+                doc.text("JAM", (tableX[0] + tableX[1]) / 2, 239.7, { align: "center" });
+                doc.text("NAMA", (tableX[1] + tableX[2]) / 2, 236.9, { align: "center" });
+                doc.text("NIP.", (tableX[2] + tableX[3]) / 2, 236.9, { align: "center" });
+                doc.text("TANDA TANGAN", (tableX[3] + tableX[4]) / 2, 236.9, { align: "center" });
+
+                setBody();
+                ["Pertama", "Kedua", "Ketiga"].forEach((label, i) => {
+                    doc.text(label, (tableX[0] + tableX[1]) / 2, tableY[i + 1] + 5.2, { align: "center" });
+                });
             }
 
             if (action === "download") {
-                doc.save(`Berita_Acara_${activeConfig?.academicYear?.replace("/", "-") || "Ujian"}.pdf`);
+                doc.save(
+                    `Berita_Acara_${academicYear.replace("/", "-") || "Ujian"}${dateFilter ? "_" + dateFilter : ""}.pdf`
+                );
             } else {
                 const blob = doc.output("blob");
-                const url = URL.createObjectURL(blob);
-                setPreviewUrl(url);
+                setPreviewUrl(URL.createObjectURL(blob));
             }
         } catch (err) {
             console.error(err);
@@ -359,12 +397,12 @@ export default function ExportBeritaAcaraPage() {
                 <div className="page-header">
                     <div>
                         <h1 className="page-title">Export Berita Acara</h1>
-                        <p className="page-subtitle">Berita acara pelaksanaan ujian per ruang per sesi dalam format PDF</p>
+                        <p className="page-subtitle">Berita acara penyelenggaraan ujian per ruang per hari (3 jam ujian) dalam format PDF</p>
                     </div>
                     <div className="flex gap-2">
                         <button
                             onClick={() => handleExportPDF("preview")}
-                            disabled={filteredItems.length === 0 || !!exporting}
+                            disabled={sheets.length === 0 || !!exporting}
                             className="btn-secondary"
                         >
                             {exporting === "preview" ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
@@ -372,7 +410,7 @@ export default function ExportBeritaAcaraPage() {
                         </button>
                         <button
                             onClick={() => handleExportPDF("download")}
-                            disabled={filteredItems.length === 0 || !!exporting}
+                            disabled={sheets.length === 0 || !!exporting}
                             className="btn-primary"
                         >
                             {exporting === "pdf" ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
@@ -421,10 +459,10 @@ export default function ExportBeritaAcaraPage() {
                             value={dateFilter}
                             onChange={(e) => setDateFilter(e.target.value)}
                         >
-                            <option value="">Semua tanggal ({items.length} lembar)</option>
+                            <option value="">Semua tanggal ({totalSheets} lembar)</option>
                             {availableDates.map((d) => (
                                 <option key={d} value={d}>
-                                    {formatDate(d)} ({items.filter((i) => i.examSchedule.date.slice(0, 10) === d).length} lembar)
+                                    {formatDate(d)} ({roomCountByDate.get(d) ?? 0} lembar)
                                 </option>
                             ))}
                         </select>
@@ -445,7 +483,7 @@ export default function ExportBeritaAcaraPage() {
                     <div className="space-y-4">
                         <div className="card-glass p-4 flex items-center gap-6">
                             <div className="text-center">
-                                <p className="text-2xl font-bold text-[var(--text-main)]">{filteredItems.length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-main)]">{sheets.length}</p>
                                 <p className="text-xs text-[var(--text-muted)]">Lembar{dateFilter ? " (filter)" : ""}</p>
                             </div>
                             <div className="w-px h-10 bg-[var(--border)]" />
@@ -458,7 +496,7 @@ export default function ExportBeritaAcaraPage() {
                                 {activeConfig && (
                                     <p className="text-sm text-[var(--text-main)] font-medium">{activeConfig.name}</p>
                                 )}
-                                <p className="text-xs text-[var(--text-muted)]">1 lembar per ruang per sesi — filter tanggal bila hanya butuh sebagian</p>
+                                <p className="text-xs text-[var(--text-muted)]">1 lembar per ruang per hari (Jam Pertama/Kedua/Ketiga) — filter tanggal bila hanya butuh sebagian</p>
                             </div>
                         </div>
 
