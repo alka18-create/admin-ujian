@@ -1,5 +1,6 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
 /**
@@ -24,8 +25,12 @@ async function main() {
         process.exit(1);
     }
 
-    const dbUrl = process.env.DATABASE_URL || "file:./dev.db";
-    const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+        console.error("DATABASE_URL belum diatur di .env");
+        process.exit(1);
+    }
+    const adapter = new PrismaPg({ connectionString });
     const prisma = new PrismaClient({ adapter });
 
     try {
