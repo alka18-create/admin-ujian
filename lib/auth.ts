@@ -10,6 +10,10 @@ const loginSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    // Wajib di production (Vercel). Dukung juga NEXTAUTH_SECRET (gaya v4).
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    // Vercel berjalan di belakang proxy, jadi host harus dipercaya.
+    trustHost: true,
     session: { strategy: "jwt" },
     pages: {
         signIn: "/login",
