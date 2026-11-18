@@ -61,41 +61,42 @@ export default async function DashboardPage() {
 
     return (
         <DashboardLayout title="Dashboard">
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-5">
                 {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-main)]">Dashboard</h1>
-                    <p className="text-[var(--text-muted)] text-sm mt-1">
-                        Selamat datang di sistem administrasi ujian sekolah
-                    </p>
+                <div className="page-header !mb-0">
+                    <div>
+                        <h1 className="page-title">Dashboard</h1>
+                        <p className="page-subtitle">Ringkasan administrasi ujian madrasah</p>
+                    </div>
+                    {stats.activeConfig && (
+                        <span className="badge badge-blue">
+                            {stats.activeConfig.academicYear}
+                        </span>
+                    )}
                 </div>
 
                 {/* School Identity Banner */}
                 {stats.schoolIdentity && (
-                    <div className="card-glass p-4 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                        <div className="w-16 h-16 bg-[var(--bg-surface-hover)] rounded-lg flex items-center justify-center shrink-0 overflow-hidden shadow-sm p-2 border border-[var(--border)]">
+                    <div className="card-glass p-4 sm:p-5 flex items-center gap-4">
+                        <div className="w-14 h-14 bg-[var(--bg-surface)] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 overflow-hidden border border-[var(--border)] p-1.5">
                             {stats.schoolIdentity.logo ? (
-                                <Image src={stats.schoolIdentity.logo} alt="Logo" width={64} height={64} unoptimized className="w-full h-full object-contain" />
+                                <Image src={stats.schoolIdentity.logo} alt="Logo" width={56} height={56} unoptimized className="w-full h-full object-contain" />
                             ) : (
-                                <Building2 size={24} className="text-[var(--text-muted)]" />
+                                <Building2 size={22} className="text-[var(--text-muted)]" />
                             )}
                         </div>
-                        <div className="flex-1">
-                            <h2 className="text-xl font-bold text-[var(--text-main)]">{stats.schoolIdentity.name}</h2>
-                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--text-muted)]">
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-lg font-bold text-[var(--text-main)] leading-tight truncate">{stats.schoolIdentity.name}</h2>
+                            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
                                 {stats.schoolIdentity.npsn && (
-                                    <span className="flex items-center gap-1.5 font-medium">
-                                        NPSN: {stats.schoolIdentity.npsn}
-                                    </span>
+                                    <span className="font-medium">NPSN {stats.schoolIdentity.npsn}</span>
                                 )}
                                 {stats.schoolIdentity.nsm && (
-                                    <span className="flex items-center gap-1.5 font-medium">
-                                        NSM: {stats.schoolIdentity.nsm}
-                                    </span>
+                                    <span className="font-medium">NSM {stats.schoolIdentity.nsm}</span>
                                 )}
                                 {stats.schoolIdentity.address && (
-                                    <span className="flex items-center gap-1.5 opacity-80">
-                                        <MapPin size={14} /> {stats.schoolIdentity.address}
+                                    <span className="flex items-center gap-1">
+                                        <MapPin size={12} /> {stats.schoolIdentity.address}
                                     </span>
                                 )}
                             </div>
@@ -105,13 +106,17 @@ export default async function DashboardPage() {
 
                 {/* Active Exam Banner */}
                 {stats.activeConfig && (
-                    <div className="card-glass p-4 flex items-center gap-3">
-                        <div className="w-2 h-2 bg-[var(--primary)] rounded-md animate-pulse flex-shrink-0" />
-                        <p className="text-sm text-[var(--text-main)]">
-                            <span className="font-semibold">Ujian Aktif:</span>{" "}
-                            {stats.activeConfig.name} — {stats.activeConfig.academicYear} (
-                            {formatDate(stats.activeConfig.startDate)} s/d{" "}
-                            {formatDate(stats.activeConfig.endDate)})
+                    <div className="card-glass px-4 py-3 flex items-center gap-3">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-40 animate-ping" />
+                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--primary)]" />
+                        </span>
+                        <p className="text-[13px] text-[var(--text-main)] leading-relaxed">
+                            <span className="font-semibold">Ujian aktif:</span>{" "}
+                            <span className="text-[var(--text-muted)]">
+                                {stats.activeConfig.name} — {formatDate(stats.activeConfig.startDate)} s/d{" "}
+                                {formatDate(stats.activeConfig.endDate)}
+                            </span>
                         </p>
                     </div>
                 )}
@@ -122,60 +127,54 @@ export default async function DashboardPage() {
                         label="Total Guru"
                         value={stats.teachers}
                         icon={Users}
-                        iconColor="text-blue-400"
-                        iconBg="bg-blue-500/10"
+                        tone="primary"
                         suffix="orang"
                     />
                     <StatCard
                         label="Total Siswa"
                         value={stats.students}
                         icon={GraduationCap}
-                        iconColor="text-emerald-400"
-                        iconBg="bg-emerald-500/10"
+                        tone="success"
                         suffix="siswa"
                     />
                     <StatCard
                         label="Total Ruang"
                         value={stats.rooms}
                         icon={DoorOpen}
-                        iconColor="text-purple-400"
-                        iconBg="bg-purple-500/10"
+                        tone="info"
                         suffix="ruang"
                     />
                     <StatCard
                         label="Jadwal Ujian"
                         value={stats.schedules}
                         icon={CalendarDays}
-                        iconColor="text-amber-400"
-                        iconBg="bg-amber-500/10"
+                        tone="warning"
                         suffix="sesi"
                     />
                     <StatCard
                         label="Alokasi Ruang"
                         value={stats.assignments}
                         icon={Grid3X3}
-                        iconColor="text-pink-400"
-                        iconBg="bg-pink-500/10"
+                        tone="neutral"
                         suffix="ruang"
                     />
                     <StatCard
                         label="Penugasan Pengawas"
                         value={stats.invigilators}
                         icon={UserCheck}
-                        iconColor="text-cyan-400"
-                        iconBg="bg-cyan-500/10"
+                        tone="primary"
                         suffix="tugas"
                     />
                 </div>
 
                 {/* Quick Links */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="card-glass p-6">
-                        <h3 className="font-bold flex items-center gap-2 mb-4">
-                            <DoorOpen className="text-[var(--primary)]" size={20} />
+                    <div className="card-glass p-5">
+                        <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+                            <DoorOpen className="text-[var(--primary-text)]" size={18} />
                             Aksi Cepat
                         </h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2.5">
                             {[
                                 { label: "Tambah Guru", href: "/master/teachers/create", icon: Users },
                                 { label: "Tambah Siswa", href: "/master/students/create", icon: GraduationCap },
@@ -185,40 +184,40 @@ export default async function DashboardPage() {
                                 <a
                                     key={link.href}
                                     href={link.href}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl border border-[var(--border)] hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5 transition-all group"
+                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] transition-colors group"
                                 >
-                                    <link.icon className="text-[var(--text-muted)] group-hover:text-[var(--primary)] mb-2" size={24} />
-                                    <span className="text-xs font-semibold text-[var(--text-main)]">{link.label}</span>
+                                    <link.icon className="text-[var(--text-muted)] group-hover:text-[var(--primary-text)] transition-colors" size={22} />
+                                    <span className="text-xs font-semibold text-[var(--text-main)] group-hover:text-[var(--primary-text)]">{link.label}</span>
                                 </a>
                             ))}
                         </div>
                     </div>
 
-                    <div className="card-glass p-6">
-                        <h3 className="font-bold flex items-center gap-2 mb-4">
-                            <ClipboardList className="text-[var(--primary)]" size={20} />
+                    <div className="card-glass p-5">
+                        <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+                            <ClipboardList className="text-[var(--primary-text)]" size={18} />
                             Status Generate
                         </h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3.5">
                             {[
                                 { label: "Alokasi Ruang", done: stats.assignments > 0 },
                                 { label: "Denah Kursi", done: stats.seatPlans > 0 },
                                 { label: "Penugasan Pengawas", done: stats.invigilators > 0 },
                             ].map((item) => (
-                                <div key={item.label} className="flex items-center justify-between">
-                                    <span className="text-sm text-[var(--text-muted)] font-medium">{item.label}</span>
-                                    <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${item.done ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                                <div key={item.label} className="flex items-center justify-between gap-3">
+                                    <span className="text-[13px] text-[var(--text-muted)] font-medium">{item.label}</span>
+                                    <span className={`badge ${item.done ? "badge-success" : "badge-neutral"}`}>
                                         {item.done ? "✓ Selesai" : "Pending"}
                                     </span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="mt-6 p-4 bg-[var(--primary)]/10 rounded-xl border border-[var(--primary)]/20">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-sm font-bold text-[var(--primary)]">Peringatan Sistem</span>
+                        <div className="mt-5 p-3.5 bg-[var(--warning-soft)] rounded-[var(--radius-sm)] border border-[color-mix(in_srgb,var(--warning)_28%,transparent)]">
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <span className="text-[12.5px] font-bold text-[var(--warning-text)]">Peringatan</span>
                             </div>
-                            <p className="text-xs text-[var(--text-muted)]">Pastikan Anda selalu menyelesaikan generasi Jadwal, Denah, dan Pengawas sebelum ujian dimulai.</p>
+                            <p className="text-xs leading-relaxed text-[var(--warning-text)] opacity-90">Pastikan jadwal, denah, dan pengawas sudah lengkap sebelum ujian dimulai.</p>
                         </div>
                     </div>
                 </div>

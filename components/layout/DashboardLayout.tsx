@@ -37,7 +37,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 <div className="print:hidden">
                     <Topbar onMenuClick={() => setSidebarOpen(true)} title={title} />
                 </div>
-                <main className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[var(--bg-base)] print:block print:overflow-visible print:h-auto print:p-0 print:bg-white print:border-none print:shadow-none">
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[var(--bg-base)] print:block print:overflow-visible print:h-auto print:p-0 print:bg-white print:border-none print:shadow-none">
                     {children}
                 </main>
             </div>

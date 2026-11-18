@@ -86,34 +86,38 @@ export default function Sidebar({ onClose }: SidebarProps) {
     };
 
     return (
-        <div className="sidebar h-full flex flex-col w-64 border-r border-[var(--border)] overflow-hidden">
+        <div className="sidebar h-full flex flex-col w-64 overflow-hidden">
             {/* Logo */}
-            <div className="flex items-center justify-between px-5 py-6 border-b border-[var(--border)]">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[var(--primary)] rounded-xl flex items-center justify-center">
+            <div className="flex items-center justify-between px-4 py-5 border-b border-[var(--sidebar-border)]">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center shrink-0 shadow-[0_8px_18px_-10px_var(--primary)]">
                         <School size={20} className="text-white" />
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-[var(--text-main)]">Admin Ujian</p>
-                        <p className="text-xs text-[var(--text-muted)]">Sekolah Menengah</p>
+                    <div className="min-w-0">
+                        <p className="text-[13.5px] font-bold text-[var(--text-main)] leading-tight truncate">Admin Ujian</p>
+                        <p className="text-[11px] text-[var(--text-muted)] truncate">Panel Administrasi</p>
                     </div>
                 </div>
                 {onClose && (
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-main)] lg:hidden">
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface-hover)] lg:hidden"
+                        aria-label="Tutup menu"
+                    >
                         <X size={18} />
                     </button>
                 )}
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+            <nav className="flex-1 overflow-y-auto px-2.5 py-3">
                 {navigation.map((group) => (
-                    <div key={group.label}>
+                    <div key={group.label} className="mb-1.5">
                         <button
                             onClick={() => toggleGroup(group.label)}
-                            className="w-full flex items-center justify-between px-2 mb-2 mt-4"
+                            className="w-full flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-[var(--sidebar-link-hover-bg)] transition-colors"
                         >
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--sidebar-link)] opacity-60">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                                 {group.label}
                             </span>
                             {collapsed[group.label] ? (
@@ -134,12 +138,10 @@ export default function Sidebar({ onClose }: SidebarProps) {
                                             key={item.href}
                                             href={item.href}
                                             onClick={onClose}
-                                            className={cn("sidebar-link rounded-xl py-2.5", isActive && "active")}
+                                            className={cn("sidebar-link", isActive && "active")}
                                         >
-                                            <span className={cn("text-[var(--sidebar-link)]", isActive && "text-[var(--sidebar-link-active)]")}>
-                                                {item.icon}
-                                            </span>
-                                            {item.label}
+                                            <span className="shrink-0">{item.icon}</span>
+                                            <span className="truncate">{item.label}</span>
                                         </Link>
                                     );
                                 })}
@@ -150,8 +152,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
             </nav>
 
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-[var(--border)]">
-                <p className="text-xs text-[var(--text-muted)]">v1.0.0 • Admin Ujian Sekolah</p>
+            <div className="px-4 py-3 border-t border-[var(--sidebar-border)]">
+                <p className="text-[11px] text-[var(--text-muted)]">v1.0.0 • Admin Ujian Sekolah</p>
             </div>
         </div>
     );

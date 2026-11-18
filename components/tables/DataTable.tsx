@@ -69,12 +69,12 @@ export default function DataTable<T extends { id: string }>({
             {/* Table */}
             <div className="overflow-x-auto">
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-16 text-slate-500">
+                    <div className="flex items-center justify-center py-16 text-[var(--text-muted)]">
                         <Loader2 size={24} className="animate-spin mr-2" />
                         Memuat data...
                     </div>
                 ) : data.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                    <div className="flex flex-col items-center justify-center py-16 text-[var(--text-muted)]">
                         <p className="text-sm">{emptyMessage}</p>
                     </div>
                 ) : (
@@ -92,7 +92,7 @@ export default function DataTable<T extends { id: string }>({
                         <tbody>
                             {data.map((row, idx) => (
                                 <tr key={row.id}>
-                                    <td className="text-slate-500 text-xs">
+                                    <td className="text-[var(--text-muted)] text-xs">
                                         {(page - 1) * 10 + idx + 1}
                                     </td>
                                     {columns.map((col, i) => (
@@ -113,8 +113,8 @@ export default function DataTable<T extends { id: string }>({
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800">
-                    <p className="text-xs text-slate-500">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
+                    <p className="text-xs text-[var(--text-muted)]">
                         Halaman {page} dari {totalPages}
                     </p>
                     <div className="flex items-center gap-1">
