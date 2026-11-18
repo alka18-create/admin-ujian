@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3", "bcryptjs"],
+    serverExternalPackages: ["pg", "@prisma/adapter-pg", "bcryptjs"],
     images: {
         remotePatterns: [],
+    },
+    experimental: {
+        agentUpgrade: "security",
     },
 };
 
