@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { School, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -13,6 +13,21 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Bersihkan parameter ?error=... peninggalan percobaan login sebelumnya,
+    // supaya URL tidak terus menampilkan error lama.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const err = params.get("error");
+        if (!err) return;
+
+        setError(
+            err === "Configuration"
+                ? "Konfigurasi server autentikasi bermasalah. Hubungi administrator."
+                : "Email atau password salah"
+        );
+        window.history.replaceState(null, "", "/login");
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
@@ -22,6 +37,7 @@ export default function LoginPage() {
             email,
             password,
             redirect: false,
+            redirectTo: "/dashboard",
         });
 
         setLoading(false);
