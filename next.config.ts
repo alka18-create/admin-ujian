@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     images: {
         remotePatterns: [],
     },
+    experimental: {
+        agentUpgrade: "security",
+    },
 };
 
 export default nextConfig;
