@@ -2,57 +2,99 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/roleGuard";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/cards/StatCard";
-import Image from "next/image";
+import Link from "next/link";
 import { Users, GraduationCap, DoorOpen, CalendarDays, UserCheck, Grid3X3, Building2, MapPin, ClipboardList } from "lucide-react";
 import { formatDate } from "@/utils/dateFormatter";
 
+type DashboardCountsRow = {
+    teachers: number;
+    students: number;
+    rooms: number;
+    schedules: number;
+    assignments: number;
+    invigilators: number;
+    seatPlans: number;
+    hasLogo: boolean;
+};
+
 async function getDashboardStats() {
-    const [activeConfig, teachers, students, rooms, schoolIdentity] = await Promise.all([
-        prisma.examConfig.findFirst({ where: { isActive: true } }),
-        prisma.teacher.count(),
-        prisma.student.count(),
-        prisma.room.count(),
-        prisma.schoolIdentity.findFirst(),
+    const [activeConfig, schoolIdentity, countRows] = await Promise.all([
+        prisma.examConfig.findFirst({
+            where: { isActive: true },
+            select: {
+                id: true,
+                name: true,
+                academicYear: true,
+                startDate: true,
+                endDate: true,
+            },
+        }),
+        prisma.schoolIdentity.findFirst({
+            select: {
+                id: true,
+                name: true,
+                npsn: true,
+                nsm: true,
+                address: true,
+                updatedAt: true,
+            },
+        }),
+        prisma.$queryRaw<DashboardCountsRow[]>`
+            WITH active_cfg AS (
+                SELECT id FROM "ExamConfig" WHERE "isActive" = true LIMIT 1
+            )
+            SELECT
+                (SELECT COUNT(*)::int FROM "Teacher") AS teachers,
+                (SELECT COUNT(*)::int FROM "Student") AS students,
+                (SELECT COUNT(*)::int FROM "Room") AS rooms,
+                COALESCE((SELECT (logo IS NOT NULL AND logo <> '') FROM "SchoolIdentity" LIMIT 1), false) AS "hasLogo",
+                (
+                    SELECT COUNT(DISTINCT (es."date", es."session"))::int
+                    FROM "ExamSchedule" es
+                    WHERE es."examConfigId" = (SELECT id FROM active_cfg)
+                ) AS schedules,
+                (
+                    SELECT COUNT(*)::int
+                    FROM "RoomAssignment" ra
+                    WHERE ra."examConfigId" = (SELECT id FROM active_cfg)
+                ) AS assignments,
+                (
+                    SELECT COUNT(DISTINCT (es."date", es."session", inv."roomId"))::int
+                    FROM "Invigilator" inv
+                    JOIN "ExamSchedule" es ON es.id = inv."examScheduleId"
+                    WHERE es."examConfigId" = (SELECT id FROM active_cfg)
+                ) AS invigilators,
+                (
+                    SELECT COUNT(*)::int
+                    FROM "SeatPlan" sp
+                    WHERE sp."examConfigId" = (SELECT id FROM active_cfg)
+                ) AS "seatPlans"
+        `,
     ]);
 
-    const configId = activeConfig?.id;
-    let schedules = 0;
-    let assignments = 0;
-    let invigilators = 0;
-    let seatPlans = 0;
+    const counts = countRows[0] ?? {
+        teachers: 0,
+        students: 0,
+        rooms: 0,
+        schedules: 0,
+        assignments: 0,
+        invigilators: 0,
+        seatPlans: 0,
+        hasLogo: false,
+    };
 
-    if (configId) {
-        const [scheduleRows, assignmentCount, invigilatorRows, seatPlanCount] = await Promise.all([
-            prisma.examSchedule.findMany({
-                where: { examConfigId: configId },
-                select: { date: true, session: true },
-            }),
-            prisma.roomAssignment.count({ where: { examConfigId: configId } }),
-            prisma.invigilator.findMany({
-                where: { examSchedule: { examConfigId: configId } },
-                select: {
-                    roomId: true,
-                    examSchedule: { select: { date: true, session: true } },
-                },
-            }),
-            prisma.seatPlan.count({ where: { examConfigId: configId } }),
-        ]);
-
-        // A parallel schedule can contain several subject rows in the same session.
-        schedules = new Set(
-            scheduleRows.map((row) => `${row.date.toISOString()}-${row.session}`)
-        ).size;
-        // Invigilator rows are replicated per room; count unique duties per room/session.
-        invigilators = new Set(
-            invigilatorRows.map(
-                (row) => `${row.examSchedule.date.toISOString()}-${row.examSchedule.session}-${row.roomId}`
-            )
-        ).size;
-        assignments = assignmentCount;
-        seatPlans = seatPlanCount;
-    }
-
-    return { teachers, students, rooms, schedules, assignments, invigilators, seatPlans, activeConfig, schoolIdentity };
+    return {
+        teachers: Number(counts.teachers),
+        students: Number(counts.students),
+        rooms: Number(counts.rooms),
+        schedules: Number(counts.schedules),
+        assignments: Number(counts.assignments),
+        invigilators: Number(counts.invigilators),
+        seatPlans: Number(counts.seatPlans),
+        hasLogo: Boolean(counts.hasLogo),
+        activeConfig,
+        schoolIdentity,
+    };
 }
 
 export default async function DashboardPage() {
@@ -79,8 +121,15 @@ export default async function DashboardPage() {
                 {stats.schoolIdentity && (
                     <div className="card-glass p-4 sm:p-5 flex items-center gap-4">
                         <div className="w-14 h-14 bg-[var(--bg-surface)] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 overflow-hidden border border-[var(--border)] p-1.5">
-                            {stats.schoolIdentity.logo ? (
-                                <Image src={stats.schoolIdentity.logo} alt="Logo" width={56} height={56} unoptimized className="w-full h-full object-contain" />
+                            {stats.hasLogo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={`/api/school-identity/logo?v=${stats.schoolIdentity.updatedAt.getTime()}`}
+                                    alt="Logo"
+                                    width={56}
+                                    height={56}
+                                    className="w-full h-full object-contain"
+                                />
                             ) : (
                                 <Building2 size={22} className="text-[var(--text-muted)]" />
                             )}
@@ -181,14 +230,14 @@ export default async function DashboardPage() {
                                 { label: "Tambah Ruang", href: "/master/rooms/create", icon: DoorOpen },
                                 { label: "Buat Jadwal", href: "/exam/schedule", icon: CalendarDays },
                             ].map((link) => (
-                                <a
+                                <Link
                                     key={link.href}
                                     href={link.href}
                                     className="flex flex-col items-center justify-center gap-2 p-4 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] transition-colors group"
                                 >
                                     <link.icon className="text-[var(--text-muted)] group-hover:text-[var(--primary-text)] transition-colors" size={22} />
                                     <span className="text-xs font-semibold text-[var(--text-main)] group-hover:text-[var(--primary-text)]">{link.label}</span>
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     </div>
