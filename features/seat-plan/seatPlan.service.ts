@@ -96,39 +96,72 @@ function selectStudentsDiffClass(
 }
 
 /**
- * Mode "double_diff_grade" (1 Meja 2 Siswa — Wajib Beda Jenjang):
- * Mengisi kursi per pasangan meja (kiri & kanan):
- * - Kursi kiri diambil dari jenjang dengan sisa siswa terbanyak.
- * - Kursi kanan WAJIB diambil dari jenjang berbeda dengan kursi kiri (yang sisanya terbanyak).
- * Strategi greedy per pasangan ini secara matematis menjamin 100% meja beda jenjang
- * selama jumlah siswa jenjang terbesar <= 50% total siswa.
+ * Mode "double_diff_grade" (1 Meja 2 Siswa — Beda Jenjang, Maks. 2 Jenjang per Ruang):
+ * 1. Untuk setiap ruang, pilih 2 jenjang dengan sisa siswa terbanyak (mis. 10 & 11, 10 & 12, atau 11 & 12).
+ * 2. Selama kedua jenjang tersebut masih memiliki siswa, isi setiap meja secara berpasangan:
+ *    kursi kiri = jenjang A, kursi kanan = jenjang B.
+ *    Hasilnya: 1 ruang hanya berisi 2 jenjang dan 100% meja beda jenjang.
+ * 3. Jika pada ruang terakhir salah satu dari 2 jenjang habis di tengah jalan, sisa kursi
+ *    diisi dengan strategi greedy beda jenjang dari jenjang tersisa.
  */
 function selectStudentsDiffGrade(
     gradeBuckets: Map<string, StudentForSeat[]>,
     count: number
 ): StudentForSeat[] {
     const selected: StudentForSeat[] = [];
-    let lastGrade: string | null = null;
 
-    const pickFromGrade = (
+    const sortedAvailable = () =>
+        Array.from(gradeBuckets.entries())
+            .filter(([, students]) => students.length > 0)
+            .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "id"));
+
+    const initial = sortedAvailable();
+    if (initial.length === 0) return selected;
+
+    // Pilih tepat 2 jenjang utama untuk ruang ini (jenjang dengan sisa terbanyak ke-1 & ke-2)
+    const primaryA = initial[0][0];
+    const primaryB = initial.length >= 2 ? initial[1][0] : null;
+
+    if (primaryB) {
+        const listA = gradeBuckets.get(primaryA)!;
+        const listB = gradeBuckets.get(primaryB)!;
+
+        // Isi pasangan meja (kiri = primaryA, kanan = primaryB) selama keduanya tersedia
+        while (selected.length + 2 <= count && listA.length > 0 && listB.length > 0) {
+            selected.push(listA.shift()!);
+            selected.push(listB.shift()!);
+        }
+
+        // Jika kuota ruang ganjil dan tersisa 1 kursi terakhir, ambil dari primaryA atau primaryB
+        if (selected.length + 1 === count) {
+            if (listA.length > 0) {
+                selected.push(listA.shift()!);
+                return selected;
+            }
+            if (listB.length > 0) {
+                selected.push(listB.shift()!);
+                return selected;
+            }
+        }
+    }
+
+    // Fallback (khusus ruang terakhir jika salah satu dari 2 jenjang utama sudah habis)
+    let lastGrade: string | null = selected.length > 0 ? selected[selected.length - 1].grade : null;
+
+    const pickFallback = (
         excludeGrade: string | null,
         preferDifferentFromGrade: string | null,
         avoidClassName: string | null
     ): StudentForSeat | null => {
-        const available = Array.from(gradeBuckets.entries()).filter(
-            ([, students]) => students.length > 0
-        );
+        const available = sortedAvailable();
         if (available.length === 0) return null;
 
         let candidates = excludeGrade
             ? available.filter(([grade]) => grade !== excludeGrade)
             : available;
 
-        if (candidates.length === 0) {
-            candidates = available;
-        }
+        if (candidates.length === 0) candidates = available;
 
-        // Urutkan berdasarkan sisa siswa terbanyak; jika seri, utamakan jenjang yang berbeda dari kursi sebelumnya
         candidates.sort((a, b) => {
             if (b[1].length !== a[1].length) return b[1].length - a[1].length;
             if (preferDifferentFromGrade) {
@@ -140,8 +173,6 @@ function selectStudentsDiffGrade(
         });
 
         const [, students] = candidates[0];
-
-        // Jika terpaksa fallback ke jenjang yang sama, usahakan minimal beda rombel (className)
         if (avoidClassName) {
             const diffClassIdx = students.findIndex((s) => s.className !== avoidClassName);
             if (diffClassIdx > 0) {
@@ -156,15 +187,13 @@ function selectStudentsDiffGrade(
     while (selected.length < count) {
         const isPairLeft = selected.length % 2 === 0;
         if (isPairLeft) {
-            // Kursi kiri meja: ambil jenjang terbanyak (tie-break beda dari kursi kanan meja sebelumnya)
-            const left = pickFromGrade(null, lastGrade, null);
+            const left = pickFallback(null, lastGrade, null);
             if (!left) break;
             selected.push(left);
             lastGrade = left.grade;
         } else {
-            // Kursi kanan meja: WAJIB beda jenjang dari kursi kiri pada meja yang sama
             const leftStudent = selected[selected.length - 1];
-            const right = pickFromGrade(leftStudent.grade, null, leftStudent.className);
+            const right = pickFallback(leftStudent.grade, null, leftStudent.className);
             if (!right) break;
             selected.push(right);
             lastGrade = right.grade;

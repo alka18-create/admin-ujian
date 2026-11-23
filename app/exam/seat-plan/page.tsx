@@ -23,6 +23,25 @@ const GENDER_BG: Record<string, string> = {
     FEMALE: "bg-pink-900/50 border-pink-700 text-pink-200",
 };
 
+function getRoomGradesLabel(seats: Seat[]): string {
+    const grades = new Set<string>();
+    for (const s of seats) {
+        const cleaned = s.student.className.trim().toUpperCase().replace(/^(KELAS|KLS)\.?\s*/i, "");
+        const num = cleaned.match(/^(1[0-2]|[1-9])(?:\b|[^0-9])/);
+        if (num) {
+            grades.add(num[1]);
+        } else if (/^XII(?:\b|[^A-Z])/.test(cleaned)) {
+            grades.add("12");
+        } else if (/^XI(?:\b|[^A-Z])/.test(cleaned)) {
+            grades.add("11");
+        } else if (/^X(?:\b|[^A-Z])/.test(cleaned)) {
+            grades.add("10");
+        }
+    }
+    const list = Array.from(grades).sort((a, b) => Number(a) - Number(b));
+    return list.length > 0 ? `Jenjang ${list.join(" & ")}` : "";
+}
+
 export default function SeatPlanPage() {
     const [configs, setConfigs] = useState<ExamConfig[]>([]);
     const [selectedConfig, setSelectedConfig] = useState("");
@@ -172,7 +191,7 @@ export default function SeatPlanPage() {
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="deskType" className="accent-blue-500" value="double_diff_grade" checked={deskType === "double_diff_grade"} onChange={() => setDeskType("double_diff_grade")} />
-                                <span className="text-[var(--text-main)] text-sm font-medium">1 Meja 2 Siswa (Beda Jenjang)</span>
+                                <span className="text-[var(--text-main)] text-sm font-medium">1 Meja 2 Siswa (Beda Jenjang, 2 Jenjang/Ruang)</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="deskType" className="accent-blue-500" value="double" checked={deskType === "double"} onChange={() => setDeskType("double")} />
@@ -211,6 +230,9 @@ export default function SeatPlanPage() {
                                 >
                                     <p className="font-semibold">{plan.room.name}</p>
                                     <p className="text-xs opacity-70">{plan.room.code} · {plan.seats.length} siswa</p>
+                                    {getRoomGradesLabel(plan.seats) && (
+                                        <p className="text-[11px] font-medium opacity-80 mt-0.5">{getRoomGradesLabel(plan.seats)}</p>
+                                    )}
                                 </button>
                             ))}
                             <div className="card-glass p-3 mt-4 space-y-2">
