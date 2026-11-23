@@ -1,20 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 function createPrismaClient() {
     const dbUrl = process.env.DATABASE_URL || "postgresql://localhost:5432/postgres";
 
+    // Pass PoolConfig langsung ke PrismaPg (tanpa new Pool()) agar tidak
+    // terkena mismatch `instanceof Pool` di bundler Next.js/Turbopack.
     // Batasi max koneksi per serverless instance agar tidak memicu
-    // EMAXCONNSESSION (max clients reached in session mode) di Supabase Pooler.
-    const pool = new Pool({
+    // EMAXCONNSESSION di Supabase Pooler.
+    const adapter = new PrismaPg({
         connectionString: dbUrl,
         max: Number(process.env.PG_POOL_MAX || 2),
         idleTimeoutMillis: 10_000,
         connectionTimeoutMillis: 15_000,
     });
-
-    const adapter = new PrismaPg(pool);
 
     return new PrismaClient({ adapter });
 }
