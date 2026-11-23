@@ -71,7 +71,7 @@ export async function getRoomMapData(examConfigId: string): Promise<RoomMapData>
             where: { examConfigId },
             _count: { _all: true },
         }),
-        prisma.schoolIdentity.findFirst(),
+        prisma.schoolIdentity.findFirst({ select: { name: true } }),
     ]);
 
     if (!config) throw new Error("Konfigurasi ujian tidak ditemukan");
