@@ -26,7 +26,7 @@ const GENDER_BG: Record<string, string> = {
 export default function SeatPlanPage() {
     const [configs, setConfigs] = useState<ExamConfig[]>([]);
     const [selectedConfig, setSelectedConfig] = useState("");
-    const [deskType, setDeskType] = useState<"single" | "double">("double");
+    const [deskType, setDeskType] = useState<"single" | "double" | "double_diff_grade">("double_diff_grade");
     const [roomPlans, setRoomPlans] = useState<RoomPlan[]>([]);
     const [generating, setGenerating] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -77,7 +77,12 @@ export default function SeatPlanPage() {
         const json = await res.json();
         setGenerating(false);
         if (json.success) {
-            setSuccess(`Berhasil! ${json.data.total} kursi di-generate.`);
+            const { total, totalPairs, diffGradePairs } = json.data;
+            const pairInfo =
+                deskType === "double_diff_grade" && totalPairs > 0
+                    ? ` (${diffGradePairs}/${totalPairs} meja pasangan beda jenjang)`
+                    : "";
+            setSuccess(`Berhasil! ${total} kursi di-generate${pairInfo}.`);
             fetchSeatPlans();
         } else {
             setError(json.error);
@@ -160,10 +165,14 @@ export default function SeatPlanPage() {
                     </div>
                     <div>
                         <label className="form-label">Tipe Meja</label>
-                        <div className="flex gap-4">
+                        <div className="flex flex-wrap gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="deskType" className="accent-blue-500" value="single" checked={deskType === "single"} onChange={() => setDeskType("single")} />
                                 <span className="text-[var(--text-main)] text-sm">1 Meja 1 Siswa (4 kolom)</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="deskType" className="accent-blue-500" value="double_diff_grade" checked={deskType === "double_diff_grade"} onChange={() => setDeskType("double_diff_grade")} />
+                                <span className="text-[var(--text-main)] text-sm font-medium">1 Meja 2 Siswa (Beda Jenjang)</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="deskType" className="accent-blue-500" value="double" checked={deskType === "double"} onChange={() => setDeskType("double")} />

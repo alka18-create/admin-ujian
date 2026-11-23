@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateSeatPlans, getSeatPlanByRoom, getSeatPlansByConfig } from "@/features/seat-plan/seatPlan.service";
+import { generateSeatPlans, getSeatPlanByRoom, getSeatPlansByConfig, type DeskType } from "@/features/seat-plan/seatPlan.service";
 import { requireAuth, handleApiError } from "@/lib/api-utils";
 
 export async function GET(req: NextRequest) {
@@ -26,9 +26,11 @@ export async function POST(req: NextRequest) {
     const { authorized, response } = await requireAuth();
     if (!authorized) return response;
     try {
-        const { examConfigId, deskType = "double" } = await req.json();
+        const { examConfigId, deskType = "double_diff_grade" } = await req.json();
         if (!examConfigId) return NextResponse.json({ success: false, error: "examConfigId required" }, { status: 400 });
-        const result = await generateSeatPlans(examConfigId, deskType);
+        const validDeskTypes: DeskType[] = ["single", "double", "double_diff_grade"];
+        const resolvedDeskType: DeskType = validDeskTypes.includes(deskType) ? deskType : "double_diff_grade";
+        const result = await generateSeatPlans(examConfigId, resolvedDeskType);
         return NextResponse.json({ success: true, data: result });
     } catch (error) {
         return handleApiError(error);
