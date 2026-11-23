@@ -102,6 +102,17 @@ export default function StudentsPage() {
 
         try {
             const res = await fetch("/api/students/import", { method: "POST", body: formData });
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                const msg =
+                    res.status === 504
+                        ? "Server timeout saat memproses file. Coba ulangi atau pecah file menjadi lebih kecil."
+                        : res.status === 413
+                          ? "Ukuran file terlalu besar untuk diunggah."
+                          : `Server mengembalikan status ${res.status}`;
+                setImportResult({ created: 0, skipped: 0, errors: [msg] });
+                return;
+            }
             const json = await res.json();
             if (json.success) {
                 setImportResult(json.data);

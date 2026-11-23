@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, handleApiError } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
 
+export const maxDuration = 60;
+
+type ValidStudentRow = {
+    rowNum: number;
+    nis: string;
+    nisn: string;
+    name: string;
+    gender: "MALE" | "FEMALE";
+    className: string;
+    major: string | null;
+    phone: string | null;
+};
+
 export async function POST(req: NextRequest) {
     const { authorized, response } = await requireAuth();
     if (!authorized) return response;
@@ -23,31 +36,46 @@ export async function POST(req: NextRequest) {
         const workbook = read(buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rows = utils.sheet_to_json<Record<string, string>>(sheet);
+        const rows = utils.sheet_to_json<Record<string, unknown>>(sheet);
 
         if (!rows.length) {
             return NextResponse.json({ success: false, error: "File Excel kosong atau tidak ada data" }, { status: 400 });
         }
 
-        let created = 0;
         let skipped = 0;
         const errors: string[] = [];
         const seenNis = new Set<string>();
         const seenNisn = new Set<string>();
+        const candidates: ValidStudentRow[] = [];
 
+        const genderMap: Record<string, "MALE" | "FEMALE"> = {
+            L: "MALE",
+            P: "FEMALE",
+            MALE: "MALE",
+            FEMALE: "FEMALE",
+            "LAKI-LAKI": "MALE",
+            PEREMPUAN: "FEMALE",
+        };
+        const validMajors = ["MIPA", "IPS", "KEAGAMAAN"];
+
+        // Tahap 1: Validasi seluruh baris di memori (tanpa query DB per baris)
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const rowNum = i + 2;
 
-            const nis = String(row["NIS"] || "").trim();
-            const nisn = String(row["NISN"] || "").trim();
-            const name = String(row["Nama"] || "").trim();
-            const genderRaw = String(row["Jenis Kelamin (L/P)"] || "").trim().toUpperCase();
-            const className = String(row["Kelas"] || "").trim();
-            const majorRaw = String(row["Jurusan (MIPA/IPS/KEAGAMAAN)"] || "").trim().toUpperCase();
-            const phone = String(row["No. HP"] || "").trim() || null;
+            const nis = String(row["NIS"] ?? "").trim();
+            const nisn = String(row["NISN"] ?? "").trim();
+            const name = String(row["Nama"] ?? "").trim();
+            const genderRaw = String(row["Jenis Kelamin (L/P)"] ?? "").trim().toUpperCase();
+            const className = String(row["Kelas"] ?? "").trim();
+            const majorRaw = String(row["Jurusan (MIPA/IPS/KEAGAMAAN)"] ?? "").trim().toUpperCase();
+            const phone = String(row["No. HP"] ?? "").trim() || null;
 
-            // Validations
+            // Lewati baris yang benar-benar kosong
+            if (!nis && !nisn && !name && !className && !genderRaw) {
+                continue;
+            }
+
             if (!nis) {
                 errors.push(`Baris ${rowNum}: NIS wajib diisi`);
                 skipped++;
@@ -69,8 +97,6 @@ export async function POST(req: NextRequest) {
                 continue;
             }
 
-            // Map L/P to MALE/FEMALE
-            const genderMap: Record<string, "MALE" | "FEMALE"> = { L: "MALE", P: "FEMALE" };
             const gender = genderMap[genderRaw] ?? null;
             if (!gender) {
                 errors.push(`Baris ${rowNum}: Jenis Kelamin harus L atau P (ditemukan: "${genderRaw}")`);
@@ -78,8 +104,6 @@ export async function POST(req: NextRequest) {
                 continue;
             }
 
-            // Validate major if provided
-            const validMajors = ["MIPA", "IPS", "KEAGAMAAN"];
             const major = majorRaw && validMajors.includes(majorRaw) ? majorRaw : null;
             if (majorRaw && !major) {
                 errors.push(`Baris ${rowNum}: Jurusan harus MIPA, IPS, atau KEAGAMAAN (ditemukan: "${majorRaw}")`);
@@ -87,50 +111,92 @@ export async function POST(req: NextRequest) {
                 continue;
             }
 
-            // Check duplicate NIS within this file
             if (seenNis.has(nis)) {
                 errors.push(`Baris ${rowNum}: NIS "${nis}" duplikat dalam file, baris dilewati`);
                 skipped++;
                 continue;
             }
 
-            // Check duplicate NISN within this file
             if (seenNisn.has(nisn)) {
                 errors.push(`Baris ${rowNum}: NISN "${nisn}" duplikat dalam file, baris dilewati`);
                 skipped++;
                 continue;
             }
 
-            // Check duplicate NIS in database
-            const existingNis = await prisma.student.findUnique({ where: { nis } });
-            if (existingNis) {
-                errors.push(`Baris ${rowNum}: NIS "${nis}" sudah digunakan oleh "${existingNis.name}", baris dilewati`);
-                skipped++;
-                continue;
-            }
-
-            // Check duplicate NISN in database
-            const existing = await prisma.student.findFirst({ where: { nisn } });
-            if (existing) {
-                errors.push(`Baris ${rowNum}: NISN "${nisn}" sudah digunakan oleh "${existing.name}", baris dilewati`);
-                skipped++;
-                continue;
-            }
-
-            await prisma.student.create({
-                data: {
-                    nis,
-                    nisn: nisn || null,
-                    name,
-                    gender,
-                    className,
-                    major,
-                    phone,
-                },
-            });
             seenNis.add(nis);
             seenNisn.add(nisn);
-            created++;
+            candidates.push({ rowNum, nis, nisn, name, gender, className, major, phone });
+        }
+
+        // Tahap 2: Cek duplikat NIS & NISN di database dalam 1 query batch
+        const toInsert: Array<{
+            nis: string;
+            nisn: string | null;
+            name: string;
+            gender: string;
+            className: string;
+            major: string | null;
+            phone: string | null;
+        }> = [];
+
+        if (candidates.length > 0) {
+            const candidateNis = candidates.map((c) => c.nis);
+            const candidateNisn = candidates.map((c) => c.nisn);
+
+            const existingStudents = await prisma.student.findMany({
+                where: {
+                    OR: [
+                        { nis: { in: candidateNis } },
+                        { nisn: { in: candidateNisn } },
+                    ],
+                },
+                select: { nis: true, nisn: true, name: true },
+            });
+
+            const existingByNis = new Map<string, string>();
+            const existingByNisn = new Map<string, string>();
+            for (const s of existingStudents) {
+                existingByNis.set(s.nis, s.name);
+                if (s.nisn) existingByNisn.set(s.nisn, s.name);
+            }
+
+            for (const item of candidates) {
+                const dupNisName = existingByNis.get(item.nis);
+                if (dupNisName) {
+                    errors.push(`Baris ${item.rowNum}: NIS "${item.nis}" sudah digunakan oleh "${dupNisName}", baris dilewati`);
+                    skipped++;
+                    continue;
+                }
+
+                const dupNisnName = existingByNisn.get(item.nisn);
+                if (dupNisnName) {
+                    errors.push(`Baris ${item.rowNum}: NISN "${item.nisn}" sudah digunakan oleh "${dupNisnName}", baris dilewati`);
+                    skipped++;
+                    continue;
+                }
+
+                toInsert.push({
+                    nis: item.nis,
+                    nisn: item.nisn || null,
+                    name: item.name,
+                    gender: item.gender,
+                    className: item.className,
+                    major: item.major,
+                    phone: item.phone,
+                });
+            }
+        }
+
+        // Tahap 3: Insert massal dalam batch (chunk per 500 baris)
+        let created = 0;
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+            const chunk = toInsert.slice(i, i + BATCH_SIZE);
+            const result = await prisma.student.createMany({
+                data: chunk,
+                skipDuplicates: true,
+            });
+            created += result.count;
         }
 
         return NextResponse.json({
