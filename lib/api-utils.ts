@@ -32,8 +32,21 @@ export async function requireAuth(
     return { authorized: true, response: null, session };
 }
 
+export class AppError extends Error {
+    statusCode: number;
+    constructor(message: string, statusCode = 400) {
+        super(message);
+        this.name = "AppError";
+        this.statusCode = statusCode;
+    }
+}
+
 export function handleApiError(error: unknown) {
     console.error("[API ERROR]", error);
+
+    if (error instanceof AppError) {
+        return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
+    }
 
     if (error && typeof error === 'object' && 'name' in error && error.name === 'ZodError') {
         return NextResponse.json({ success: false, error: "Data tidak valid" }, { status: 400 });

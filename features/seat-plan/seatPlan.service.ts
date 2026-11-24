@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { generateSeatLabel } from "@/utils/generateCode";
+import { AppError } from "@/lib/api-utils";
 
 export type DeskType = "single" | "double" | "double_diff_grade";
 
@@ -227,19 +228,20 @@ export async function generateSeatPlans(
     ]);
 
     if (assignments.length === 0) {
-        throw new Error("Alokasi ruang belum dibuat. Generate alokasi ruang terlebih dahulu.");
+        throw new AppError("Alokasi ruang belum dibuat. Generate alokasi ruang terlebih dahulu.", 400);
     }
 
     if (rawStudents.length === 0) {
-        throw new Error("Tidak ada data siswa aktif. Import data siswa terlebih dahulu.");
+        throw new AppError("Tidak ada data siswa aktif. Import data siswa terlebih dahulu.", 400);
     }
 
     const totalAssigned = assignments.reduce((sum, item) => sum + item.studentCount, 0);
 
     if (totalAssigned !== rawStudents.length) {
-        throw new Error(
+        throw new AppError(
             `Alokasi ruang tidak sesuai: total alokasi ${totalAssigned} siswa, ` +
-            `sedangkan siswa aktif ${rawStudents.length}. Silakan generate ulang alokasi ruang.`
+            `sedangkan siswa aktif ${rawStudents.length}. Silakan generate ulang alokasi ruang.`,
+            400
         );
     }
 
@@ -247,9 +249,10 @@ export async function generateSeatPlans(
         (assignment) => assignment.studentCount > assignment.room.capacity
     );
     if (oversizedRoom) {
-        throw new Error(
+        throw new AppError(
             `Alokasi ${oversizedRoom.room.name} (${oversizedRoom.studentCount} siswa) ` +
-            `melebihi kapasitas ${oversizedRoom.room.capacity}. Silakan generate ulang alokasi ruang.`
+            `melebihi kapasitas ${oversizedRoom.room.capacity}. Silakan generate ulang alokasi ruang.`,
+            400
         );
     }
 

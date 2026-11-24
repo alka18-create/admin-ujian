@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { shuffle } from "@/utils/shuffle";
+import { AppError } from "@/lib/api-utils";
 
 // Day-of-week mapping: JS getDay() = 0(Sun),1(Mon),...,6(Sat)
 // We use 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
@@ -42,8 +43,14 @@ export async function generateInvigilators(examConfigId: string) {
         }),
     ]);
 
-    if (schedules.length === 0) throw new Error("Belum ada jadwal ujian");
-    if (assignments.length === 0) throw new Error("Alokasi ruang belum dibuat");
+    if (schedules.length === 0) throw new AppError("Belum ada jadwal ujian", 400);
+    if (assignments.length === 0) throw new AppError("Alokasi ruang belum dibuat", 400);
+    if (teachers.length < assignments.length) {
+        throw new AppError(
+            `Jumlah guru aktif (${teachers.length}) kurang dari jumlah ruang ujian (${assignments.length}).`,
+            400
+        );
+    }
 
     // Delete existing invigilators and insert new ones atomically at the end
 
@@ -59,6 +66,23 @@ export async function generateInvigilators(examConfigId: string) {
         else sessionsByKey.set(key, [schedule]);
     }
     const sessionList = Array.from(sessionsByKey.values());
+
+    // Validasi total kuota maxSessions sebelum loop agar pesan error langsung jelas
+    const totalDutiesNeeded = sessionList.length * assignments.length;
+    const allHaveMaxLimit = teachers.every((t) => t.maxSessions !== null && t.maxSessions !== undefined);
+    if (allHaveMaxLimit) {
+        const totalCapacity = teachers.reduce((sum, t) => sum + (t.maxSessions ?? 0), 0);
+        if (totalCapacity < totalDutiesNeeded) {
+            const minAvg = Math.ceil(totalDutiesNeeded / teachers.length);
+            throw new AppError(
+                `Total batas maksimal mengawas guru tidak mencukupi: dibutuhkan ${totalDutiesNeeded} tugas ` +
+                `(${sessionList.length} sesi × ${assignments.length} ruang), sedangkan total batas maksimal ` +
+                `${teachers.length} guru aktif hanya ${totalCapacity} tugas. ` +
+                `Naikkan batas maksimal sesi (minimal rata-rata ${minAvg} sesi/guru) atau kosongkan batas sesi di Data Guru.`,
+                400
+            );
+        }
+    }
 
     const allInvigilators: Prisma.InvigilatorCreateManyInput[] = [];
     let dutyCount = 0;
@@ -88,10 +112,12 @@ export async function generateInvigilators(examConfigId: string) {
         if (baseEligible.length < assignments.length) {
             const dayNames = ["", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
             const dayName = dayNames[getDayNumber(date)];
-            throw new Error(
+            throw new AppError(
                 `Tidak cukup guru tersedia untuk sesi ${schedule.session} hari ${dayName} ` +
                 `(${date.toLocaleDateString("id-ID")}). ` +
-                `Diperlukan: ${assignments.length} guru, tersedia: ${baseEligible.length} guru.`
+                `Diperlukan: ${assignments.length} guru, tersedia: ${baseEligible.length} guru. ` +
+                `Periksa pengaturan hari tersedia atau batas maksimal sesi di Data Guru.`,
+                400
             );
         }
 
