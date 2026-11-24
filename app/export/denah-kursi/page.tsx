@@ -311,26 +311,26 @@ export default function ExportSeatPlanPage() {
 
                                 {/* Roster (compact 2-column grid in print so 32-40 students fit easily on 1 A4 page) */}
                                 {showRoster && (
-                                    <div className="border-t border-[var(--border)] print:border-gray-300 p-4 print:px-3 print:py-2 mt-2 print:mt-0 bg-slate-50 dark:bg-[var(--bg-surface-hover)] print:bg-white">
-                                        <p className="text-xs print:text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5 print:mb-1 print-text">
+                                    <div className="border-t border-[var(--border)] print:border-gray-300 p-4 print:px-3 print:py-2.5 mt-2 print:mt-0 bg-slate-50 dark:bg-[var(--bg-surface-hover)] print:bg-white">
+                                        <p className="text-xs print:text-[11.5px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5 print:mb-1.5 print-text">
                                             Daftar Peserta — {currentPlan.room.name} ({currentPlan.seats.length} Siswa)
                                         </p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-8 print:gap-x-4 gap-y-0.5 print:gap-y-0">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-8 print:gap-x-5 gap-y-0.5 print:gap-y-0">
                                             {sortedSeats.map((seat, idx) => (
                                                 <div
                                                     key={seat.id}
-                                                    className="flex items-center gap-2 print:gap-1.5 py-1.5 print:py-[2.5px] border-b border-[var(--border)] print:border-gray-200"
+                                                    className="flex items-center gap-2 print:gap-1.5 py-1.5 print:py-[4px] border-b border-[var(--border)] print:border-gray-200"
                                                 >
-                                                    <span className="text-xs print:text-[9px] text-[var(--text-muted)] print-muted w-6 print:w-5 text-right flex-shrink-0">
+                                                    <span className="text-xs print:text-[11px] text-[var(--text-muted)] print-muted w-6 print:w-5 text-right flex-shrink-0">
                                                         {idx + 1}.
                                                     </span>
-                                                    <span className="text-xs print:text-[9px] font-mono text-[var(--text-muted)] print-text font-semibold w-7 print:w-6 flex-shrink-0">
+                                                    <span className="text-xs print:text-[11px] font-mono text-[var(--text-muted)] print-text font-bold w-7 print:w-6 flex-shrink-0">
                                                         {seat.seatLabel}
                                                     </span>
-                                                    <span className="text-xs print:text-[9.5px] text-[var(--text-main)] font-semibold flex-1 truncate print-text">
+                                                    <span className="text-xs print:text-[11.5px] text-[var(--text-main)] font-semibold flex-1 truncate print-text">
                                                         {seat.student.name}
                                                     </span>
-                                                    <span className="text-xs print:text-[9px] text-[var(--text-muted)] print-muted flex-shrink-0">
+                                                    <span className="text-xs print:text-[11px] text-[var(--text-muted)] print-muted font-medium flex-shrink-0">
                                                         {seat.student.className}
                                                     </span>
                                                 </div>
