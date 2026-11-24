@@ -235,6 +235,12 @@ export default function ExportSeatPlanPage() {
                             }
                             .print-text { color: black !important; }
                             .print-muted { color: #374151 !important; }
+                            .roster-title { font-size: 13px !important; margin-bottom: 6px !important; }
+                            .roster-row { padding-top: 4.5px !important; padding-bottom: 4.5px !important; gap: 6px !important; }
+                            .roster-num { font-size: 12.5px !important; width: 22px !important; }
+                            .roster-seat { font-size: 12.5px !important; width: 28px !important; }
+                            .roster-name { font-size: 13.5px !important; line-height: 1.25 !important; }
+                            .roster-class { font-size: 12.5px !important; }
                         }
                     `}} />
 
@@ -309,28 +315,28 @@ export default function ExportSeatPlanPage() {
                                     </p>
                                 </div>
 
-                                {/* Roster (compact 2-column grid in print so 32-40 students fit easily on 1 A4 page) */}
+                                {/* Roster (2-column grid with readable 13.5px print font, fits 32-40 students on 1 A4 page) */}
                                 {showRoster && (
                                     <div className="border-t border-[var(--border)] print:border-gray-300 p-4 print:px-3 print:py-2.5 mt-2 print:mt-0 bg-slate-50 dark:bg-[var(--bg-surface-hover)] print:bg-white">
-                                        <p className="text-xs print:text-[11.5px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5 print:mb-1.5 print-text">
+                                        <p className="roster-title text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5 print-text">
                                             Daftar Peserta — {currentPlan.room.name} ({currentPlan.seats.length} Siswa)
                                         </p>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-8 print:gap-x-5 gap-y-0.5 print:gap-y-0">
                                             {sortedSeats.map((seat, idx) => (
                                                 <div
                                                     key={seat.id}
-                                                    className="flex items-center gap-2 print:gap-1.5 py-1.5 print:py-[4px] border-b border-[var(--border)] print:border-gray-200"
+                                                    className="roster-row flex items-center gap-2 py-1.5 border-b border-[var(--border)] print:border-gray-200"
                                                 >
-                                                    <span className="text-xs print:text-[11px] text-[var(--text-muted)] print-muted w-6 print:w-5 text-right flex-shrink-0">
+                                                    <span className="roster-num text-xs text-[var(--text-muted)] print-muted w-6 text-right flex-shrink-0">
                                                         {idx + 1}.
                                                     </span>
-                                                    <span className="text-xs print:text-[11px] font-mono text-[var(--text-muted)] print-text font-bold w-7 print:w-6 flex-shrink-0">
+                                                    <span className="roster-seat text-xs font-mono text-[var(--text-muted)] print-text font-bold w-7 flex-shrink-0">
                                                         {seat.seatLabel}
                                                     </span>
-                                                    <span className="text-xs print:text-[11.5px] text-[var(--text-main)] font-semibold flex-1 truncate print-text">
+                                                    <span className="roster-name text-xs text-[var(--text-main)] font-semibold flex-1 truncate print-text">
                                                         {seat.student.name}
                                                     </span>
-                                                    <span className="text-xs print:text-[11px] text-[var(--text-muted)] print-muted font-medium flex-shrink-0">
+                                                    <span className="roster-class text-xs text-[var(--text-muted)] print-muted font-medium flex-shrink-0">
                                                         {seat.student.className}
                                                     </span>
                                                 </div>
