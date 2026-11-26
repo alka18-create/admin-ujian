@@ -271,7 +271,7 @@ export default function TataTertibPage() {
                 }
                 style={{
                     aspectRatio: isPrint ? undefined : "210 / 297",
-                    padding: isPrint ? "12mm 14mm" : "5.5% 6.5%",
+                    padding: isPrint ? "9mm 13mm" : "5.5% 6.5%",
                     fontFamily: '"Times New Roman", Times, Georgia, serif',
                     color: "#000000",
                     boxSizing: "border-box",
@@ -284,11 +284,16 @@ export default function TataTertibPage() {
                     style={{
                         border: "2.2px solid #000000",
                         flex: 1,
-                        padding: isPrint ? "10mm 11mm 9mm 11mm" : "4.2% 4.8% 3.8% 4.8%",
+                        padding: isPrint
+                            ? isPeserta
+                                ? "7mm 10mm 6mm 10mm"
+                                : "9mm 11mm 8mm 11mm"
+                            : "4.2% 4.8% 3.8% 4.8%",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "space-between",
                         boxSizing: "border-box",
+                        overflow: "hidden",
                     }}
                 >
                     <div>
@@ -296,14 +301,14 @@ export default function TataTertibPage() {
                         <div
                             style={{
                                 textAlign: "center",
-                                marginBottom: isPrint ? (isPeserta ? "6mm" : "7mm") : "3.2%",
-                                lineHeight: 1.32,
+                                marginBottom: isPrint ? (isPeserta ? "4mm" : "6mm") : "3.2%",
+                                lineHeight: 1.26,
                             }}
                         >
                             <div
                                 style={{
                                     fontWeight: 700,
-                                    fontSize: isPrint ? "15.5pt" : "clamp(13px, 1.9vw, 18px)",
+                                    fontSize: isPrint ? (isPeserta ? "14.5pt" : "15.5pt") : "clamp(13px, 1.9vw, 18px)",
                                     letterSpacing: "0.02em",
                                 }}
                             >
@@ -311,7 +316,7 @@ export default function TataTertibPage() {
                             </div>
                             <div
                                 style={{
-                                    fontSize: isPrint ? "12pt" : "clamp(10.5px, 1.35vw, 14px)",
+                                    fontSize: isPrint ? (isPeserta ? "11pt" : "12pt") : "clamp(10.5px, 1.35vw, 14px)",
                                     marginTop: "2px",
                                 }}
                             >
@@ -319,14 +324,14 @@ export default function TataTertibPage() {
                             </div>
                             <div
                                 style={{
-                                    fontSize: isPrint ? "12pt" : "clamp(10.5px, 1.35vw, 14px)",
+                                    fontSize: isPrint ? (isPeserta ? "11pt" : "12pt") : "clamp(10.5px, 1.35vw, 14px)",
                                 }}
                             >
                                 {schoolHeader}
                             </div>
                             <div
                                 style={{
-                                    fontSize: isPrint ? "12pt" : "clamp(10.5px, 1.35vw, 14px)",
+                                    fontSize: isPrint ? (isPeserta ? "11pt" : "12pt") : "clamp(10.5px, 1.35vw, 14px)",
                                 }}
                             >
                                 {yearHeader}
@@ -338,12 +343,12 @@ export default function TataTertibPage() {
                             style={{
                                 fontSize: isPrint
                                     ? isPeserta
-                                        ? "10.3pt"
-                                        : "10.8pt"
+                                        ? "9.5pt"
+                                        : "10.5pt"
                                     : isPeserta
                                       ? "clamp(8.5px, 1.05vw, 11.5px)"
                                       : "clamp(9px, 1.1vw, 12px)",
-                                lineHeight: isPeserta ? 1.36 : 1.42,
+                                lineHeight: isPrint ? (isPeserta ? 1.26 : 1.38) : isPeserta ? 1.34 : 1.4,
                                 textAlign: "justify",
                             }}
                         >
@@ -355,13 +360,13 @@ export default function TataTertibPage() {
                                             style={{
                                                 display: "flex",
                                                 alignItems: "flex-start",
-                                                gap: isPrint ? "3mm" : "6px",
-                                                marginBottom: isPrint ? (isPeserta ? "1.3mm" : "1.8mm") : "4px",
+                                                gap: isPrint ? "2.5mm" : "6px",
+                                                marginBottom: isPrint ? (isPeserta ? "0.75mm" : "1.5mm") : "4px",
                                             }}
                                         >
                                             <span
                                                 style={{
-                                                    width: isPrint ? "6mm" : "18px",
+                                                    width: isPrint ? "5.5mm" : "18px",
                                                     flexShrink: 0,
                                                     textAlign: "right",
                                                 }}
@@ -379,14 +384,14 @@ export default function TataTertibPage() {
                                             style={{
                                                 display: "flex",
                                                 alignItems: "flex-start",
-                                                gap: isPrint ? "2.5mm" : "5px",
-                                                paddingLeft: isPrint ? "9mm" : "24px",
-                                                marginBottom: isPrint ? (isPeserta ? "0.8mm" : "1.2mm") : "2.5px",
+                                                gap: isPrint ? "2mm" : "5px",
+                                                paddingLeft: isPrint ? "8mm" : "24px",
+                                                marginBottom: isPrint ? (isPeserta ? "0.45mm" : "1mm") : "2.5px",
                                             }}
                                         >
                                             <span
                                                 style={{
-                                                    width: isPrint ? "4.5mm" : "14px",
+                                                    width: isPrint ? "4mm" : "14px",
                                                     flexShrink: 0,
                                                 }}
                                             >
@@ -400,7 +405,7 @@ export default function TataTertibPage() {
                                     <p
                                         key={idx}
                                         style={{
-                                            marginBottom: isPrint ? "1.5mm" : "4px",
+                                            marginBottom: isPrint ? "1mm" : "4px",
                                         }}
                                     >
                                         {item.text}
@@ -415,16 +420,18 @@ export default function TataTertibPage() {
                         style={{
                             display: "flex",
                             justifyContent: "flex-end",
-                            marginTop: isPrint ? "5mm" : "16px",
+                            marginTop: isPrint ? "3mm" : "16px",
                             paddingRight: isPrint ? "4mm" : "12px",
+                            breakInside: "avoid",
+                            pageBreakInside: "avoid",
                         }}
                     >
                         <div
                             style={{
                                 position: "relative",
-                                minWidth: isPrint ? "62mm" : "210px",
-                                fontSize: isPrint ? "11pt" : "clamp(9.5px, 1.15vw, 12.5px)",
-                                lineHeight: 1.35,
+                                minWidth: isPrint ? "60mm" : "210px",
+                                fontSize: isPrint ? "10.5pt" : "clamp(9.5px, 1.15vw, 12.5px)",
+                                lineHeight: 1.3,
                             }}
                         >
                             {/* Stempel menimpa sisi kiri tanda tangan */}
@@ -435,10 +442,10 @@ export default function TataTertibPage() {
                                     alt="Stempel Madrasah"
                                     style={{
                                         position: "absolute",
-                                        left: isPrint ? "-18mm" : "-52px",
+                                        left: isPrint ? "-16mm" : "-52px",
                                         top: isPrint ? "1mm" : "4px",
-                                        width: isPrint ? "32mm" : "92px",
-                                        height: isPrint ? "32mm" : "92px",
+                                        width: isPrint ? "28mm" : "92px",
+                                        height: isPrint ? "28mm" : "92px",
                                         objectFit: "contain",
                                         opacity: 0.88,
                                         pointerEvents: "none",
@@ -455,7 +462,7 @@ export default function TataTertibPage() {
                             {/* Ruang Tanda Tangan */}
                             <div
                                 style={{
-                                    height: isPrint ? "18mm" : "52px",
+                                    height: isPrint ? "15mm" : "52px",
                                     display: "flex",
                                     alignItems: "center",
                                     position: "relative",
@@ -467,15 +474,15 @@ export default function TataTertibPage() {
                                         src={school.signature}
                                         alt="Tanda Tangan Kepala Madrasah"
                                         style={{
-                                            maxHeight: isPrint ? "20mm" : "58px",
-                                            maxWidth: isPrint ? "48mm" : "140px",
+                                            maxHeight: isPrint ? "17mm" : "58px",
+                                            maxWidth: isPrint ? "44mm" : "140px",
                                             objectFit: "contain",
                                         }}
                                     />
                                 )}
                             </div>
 
-                            <div style={{ fontWeight: 700, textTransform: "uppercase" }}>
+                            <div style={{ fontWeight: 700 }}>
                                 {headmasterName}
                             </div>
                             {headmasterNipText && <div>{headmasterNipText}</div>}
@@ -507,7 +514,9 @@ export default function TataTertibPage() {
                         .print-only-rules { display: block !important; }
                         .tata-tertib-sheet {
                             width: 210mm !important;
-                            height: 297mm !important;
+                            height: 296mm !important;
+                            max-height: 296mm !important;
+                            overflow: hidden !important;
                             background: #ffffff !important;
                             break-inside: avoid !important;
                             page-break-inside: avoid !important;
