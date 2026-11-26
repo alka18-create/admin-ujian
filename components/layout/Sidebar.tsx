@@ -17,7 +17,8 @@ import {
     ChevronRight,
     School,
     X,
-    Landmark
+    Landmark,
+    Hash
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ const navigation: NavGroup[] = [
             { label: "Jadwal Pengawas", href: "/export/pengawas", icon: <FileText size={18} /> },
             { label: "Denah Kursi", href: "/export/denah-kursi", icon: <Grid3X3 size={18} /> },
             { label: "Denah Ruang", href: "/export/denah-ruang", icon: <MapPin size={18} /> },
+            { label: "Nomor Ruang", href: "/export/nomor-ruang", icon: <Hash size={18} /> },
             { label: "Daftar Hadir", href: "/export/daftar-hadir", icon: <ClipboardList size={18} /> },
             { label: "Berita Acara", href: "/export/berita-acara", icon: <FileText size={18} /> },
             { label: "Kartu Peserta", href: "/exam/cards", icon: <FileText size={18} /> },
