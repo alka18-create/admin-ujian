@@ -619,9 +619,9 @@ export default function NomorRuangPage() {
                 )}
 
                 {!loading && data && (
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-                        {/* PANEL PENGATURAN (KIRI) */}
-                        <div className="xl:col-span-4 space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                        {/* PANEL PENGATURAN (KIRI, BISA DI-SCROLL UP/DOWN SECARA INDEPENDEN) */}
+                        <div className="lg:col-span-4 space-y-4 lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto lg:pr-1.5">
                             <div className="card-glass p-4 space-y-3.5">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
@@ -843,8 +843,8 @@ export default function NomorRuangPage() {
                             </div>
                         </div>
 
-                        {/* PREVIEW A4 LANDSCAPE (KANAN) */}
-                        <div className="xl:col-span-8 space-y-3">
+                        {/* PREVIEW A4 LANDSCAPE (KANAN, TETAP DIAM / STICKY) */}
+                        <div className="lg:col-span-8 space-y-3 lg:sticky lg:top-0">
                             <div className="card-glass p-3 sm:p-4 space-y-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div>
