@@ -291,7 +291,7 @@ export default function TataTertibPage() {
                             : "4.2% 4.8% 3.8% 4.8%",
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "space-between",
+                        justifyContent: "flex-start",
                         boxSizing: "border-box",
                         overflow: "hidden",
                     }}
@@ -418,7 +418,7 @@ export default function TataTertibPage() {
                         style={{
                             display: "flex",
                             justifyContent: "flex-end",
-                            marginTop: isPrint ? "3mm" : "16px",
+                            marginTop: isPrint ? (isPeserta ? "4mm" : "10mm") : isPeserta ? "14px" : "24px",
                             paddingRight: isPrint ? "4mm" : "12px",
                             breakInside: "avoid",
                             pageBreakInside: "avoid",
@@ -512,8 +512,8 @@ export default function TataTertibPage() {
                         .print-only-rules { display: block !important; }
                         .tata-tertib-sheet {
                             width: 210mm !important;
-                            height: 296mm !important;
-                            max-height: 296mm !important;
+                            height: 288mm !important;
+                            max-height: 288mm !important;
                             overflow: hidden !important;
                             background: #ffffff !important;
                             break-inside: avoid !important;
