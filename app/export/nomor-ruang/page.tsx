@@ -12,7 +12,9 @@ import {
     Loader2,
     Palette,
     Printer,
+    RotateCcw,
     Settings2,
+    Type,
 } from "lucide-react";
 
 type ExamConfig = {
@@ -112,6 +114,12 @@ export default function NomorRuangPage() {
     const [numberFormat, setNumberFormat] = useState<NumberFormat>("3digit");
     const [roomScope, setRoomScope] = useState<RoomScope>("active");
     const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>("ALL");
+
+    // Skala ukuran font (dalam persen, 100 = default)
+    const [headerFontScale, setHeaderFontScale] = useState(100);
+    const [labelFontScale, setLabelFontScale] = useState(100);
+    const [numberFontScale, setNumberFontScale] = useState(100);
+    const [footerFontScale, setFooterFontScale] = useState(100);
 
     // Preview & export state
     const [previewIndex, setPreviewIndex] = useState(0);
@@ -287,9 +295,14 @@ export default function NomorRuangPage() {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
 
-                drawFittedText(ctx, schoolTitle.trim() || "MAN 3 NGAWI", headerCenterX, topY + topH * 0.25, headerTextMaxW, 88, fontHeavy, "900");
-                drawFittedText(ctx, examTitle.trim() || "SUMATIF AKHIR SEMESTER", headerCenterX, topY + topH * 0.52, headerTextMaxW, 86, fontHeavy, "900");
-                drawFittedText(ctx, yearTitle.trim() || "TAHUN PELAJARAN", headerCenterX, topY + topH * 0.79, headerTextMaxW, 84, fontHeavy, "900");
+                const hScale = headerFontScale / 100;
+                const lScale = labelFontScale / 100;
+                const nScale = numberFontScale / 100;
+                const fScale = footerFontScale / 100;
+
+                drawFittedText(ctx, schoolTitle.trim() || "MAN 3 NGAWI", headerCenterX, topY + topH * 0.25, headerTextMaxW, Math.round(88 * hScale), fontHeavy, "900");
+                drawFittedText(ctx, examTitle.trim() || "SUMATIF AKHIR SEMESTER", headerCenterX, topY + topH * 0.52, headerTextMaxW, Math.round(86 * hScale), fontHeavy, "900");
+                drawFittedText(ctx, yearTitle.trim() || "TAHUN PELAJARAN", headerCenterX, topY + topH * 0.79, headerTextMaxW, Math.round(84 * hScale), fontHeavy, "900");
 
                 // 4. Panel Tengah: Ilustrasi Siswi (kiri) + NOMOR RUANG UJIAN + Angka Besar (kanan)
                 const illusMaxW = Math.round(boxW * 0.27);
@@ -319,10 +332,10 @@ export default function NomorRuangPage() {
                 ctx.textBaseline = "middle";
 
                 // Label "NOMOR RUANG UJIAN"
-                drawFittedText(ctx, "NOMOR RUANG UJIAN", numCenterX, midY + midH * 0.16, numAreaMaxW, 106, fontSans, "800");
+                drawFittedText(ctx, "NOMOR RUANG UJIAN", numCenterX, midY + midH * 0.16, numAreaMaxW, Math.round(106 * lScale), fontSans, "800");
 
                 // Angka Nomor Ruang Raksasa
-                drawFittedText(ctx, numberText, numCenterX, midY + midH * 0.62, numAreaMaxW, 640, fontHeavy, "900");
+                drawFittedText(ctx, numberText, numCenterX, midY + midH * 0.62, numAreaMaxW, Math.round(640 * nScale), fontHeavy, "900");
 
                 // 5. Panel Bawah: Footer Banner
                 ctx.fillStyle = "#111111";
@@ -334,7 +347,7 @@ export default function NomorRuangPage() {
                     W / 2,
                     botY + botH / 2 + 2,
                     boxW - 100,
-                    72,
+                    Math.round(72 * fScale),
                     fontHeavy,
                     "900"
                 );
@@ -366,6 +379,10 @@ export default function NomorRuangPage() {
             roomIndexInScope >= 0 ? roomIndexInScope : index,
             numberFormat
         );
+        const hScale = headerFontScale / 100;
+        const lScale = labelFontScale / 100;
+        const nScale = numberFontScale / 100;
+        const fScale = footerFontScale / 100;
 
         return (
             <div
@@ -422,13 +439,13 @@ export default function NomorRuangPage() {
                             minWidth: 0,
                         }}
                     >
-                        <div style={{ fontWeight: 900, fontSize: isPrint ? "24pt" : "clamp(12px, 2.2vw, 24px)", letterSpacing: "0.02em" }}>
+                        <div style={{ fontWeight: 900, fontSize: isPrint ? `${(24 * hScale).toFixed(1)}pt` : `calc(clamp(12px, 2.2vw, 24px) * ${hScale})`, letterSpacing: "0.02em" }}>
                             {schoolTitle || "MAN 3 NGAWI"}
                         </div>
-                        <div style={{ fontWeight: 900, fontSize: isPrint ? "22pt" : "clamp(11px, 2vw, 22px)", letterSpacing: "0.02em" }}>
+                        <div style={{ fontWeight: 900, fontSize: isPrint ? `${(22 * hScale).toFixed(1)}pt` : `calc(clamp(11px, 2vw, 22px) * ${hScale})`, letterSpacing: "0.02em" }}>
                             {examTitle || "SUMATIF AKHIR SEMESTER"}
                         </div>
-                        <div style={{ fontWeight: 900, fontSize: isPrint ? "21pt" : "clamp(10px, 1.9vw, 21px)", letterSpacing: "0.02em" }}>
+                        <div style={{ fontWeight: 900, fontSize: isPrint ? `${(21 * hScale).toFixed(1)}pt` : `calc(clamp(10px, 1.9vw, 21px) * ${hScale})`, letterSpacing: "0.02em" }}>
                             {yearTitle || "TAHUN PELAJARAN"}
                         </div>
                     </div>
@@ -479,7 +496,7 @@ export default function NomorRuangPage() {
                         <div
                             style={{
                                 fontWeight: 800,
-                                fontSize: isPrint ? "28pt" : "clamp(13px, 2.5vw, 28px)",
+                                fontSize: isPrint ? `${(28 * lScale).toFixed(1)}pt` : `calc(clamp(13px, 2.5vw, 28px) * ${lScale})`,
                                 letterSpacing: "0.06em",
                                 marginBottom: "1%",
                             }}
@@ -489,7 +506,7 @@ export default function NomorRuangPage() {
                         <div
                             style={{
                                 fontWeight: 900,
-                                fontSize: isPrint ? "175pt" : "clamp(58px, 14vw, 156px)",
+                                fontSize: isPrint ? `${(175 * nScale).toFixed(1)}pt` : `calc(clamp(58px, 14vw, 156px) * ${nScale})`,
                                 lineHeight: 0.9,
                                 letterSpacing: "-0.02em",
                                 fontFamily: '"Arial Black", "Public Sans", Impact, sans-serif',
@@ -512,7 +529,7 @@ export default function NomorRuangPage() {
                         padding: "0 3%",
                         color: "#111111",
                         fontWeight: 900,
-                        fontSize: isPrint ? "19pt" : "clamp(10px, 1.75vw, 19px)",
+                        fontSize: isPrint ? `${(19 * fScale).toFixed(1)}pt` : `calc(clamp(10px, 1.75vw, 19px) * ${fScale})`,
                         textAlign: "center",
                     }}
                 >
@@ -777,6 +794,52 @@ export default function NomorRuangPage() {
                                         onChange={(e) => setFooterText(e.target.value)}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Pengaturan Ukuran Font */}
+                            <div className="card-glass p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                                        <Type size={16} className="text-[var(--primary-text)]" />
+                                        Ukuran Font
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setHeaderFontScale(100);
+                                            setLabelFontScale(100);
+                                            setNumberFontScale(100);
+                                            setFooterFontScale(100);
+                                        }}
+                                        className="btn-ghost py-1 px-2 text-xs"
+                                        title="Kembalikan semua ukuran font ke 100%"
+                                    >
+                                        <RotateCcw size={12} /> Reset
+                                    </button>
+                                </div>
+
+                                {[
+                                    { label: "Judul Header (Sekolah / Ujian / Tahun)", value: headerFontScale, setValue: setHeaderFontScale, min: 60, max: 150 },
+                                    { label: "Label \"NOMOR RUANG UJIAN\"", value: labelFontScale, setValue: setLabelFontScale, min: 60, max: 150 },
+                                    { label: "Angka Nomor Ruang (001)", value: numberFontScale, setValue: setNumberFontScale, min: 60, max: 140 },
+                                    { label: "Teks Footer", value: footerFontScale, setValue: setFooterFontScale, min: 60, max: 150 },
+                                ].map((item) => (
+                                    <div key={item.label} className="space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
+                                            <span className="font-mono font-bold text-[var(--text-main)]">{item.value}%</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={item.min}
+                                            max={item.max}
+                                            step={5}
+                                            value={item.value}
+                                            onChange={(e) => item.setValue(Number(e.target.value))}
+                                            className="w-full accent-[var(--primary)] cursor-pointer"
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
